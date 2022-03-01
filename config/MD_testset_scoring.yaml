@@ -1,0 +1,38 @@
+exp_tag: "MLM_distill_no_discriminative"
+
+actions:
+  - train
+
+# training actions
+train:
+  type: "MLM_distillation"
+  device: "cuda:0"
+  model: "bert-base-chinese"
+  model_weight_path: 
+  train_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/train.lm.json"
+  text_type: "hyp_text"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative"
+  max_utts: 999999
+  max_seq_len: 50
+  batch_size: 100
+  epoch: 50
+
+# inference actions
+scoring:
+  type: "sentence_level"
+  device: "cuda:0"
+  model: "bert-base-chinese"
+  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/checkpoint_50.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  text_type: "hyp"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
+  max_utts: 9999999
+  batch_size: 100
+
+rescoring:
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
+  test_asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.am_lm.json"
+  max_utts: 9999999
