@@ -4,7 +4,7 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from train import DomainAdaptation, MLM_distill
+from train import DomainAdaptation, MLMDistill, MWERTraining
 from inference import SentencelevelScoring, TokenlevelScoring, get_recog_data
 from rescorer import Rescorer
 from util.config import parse_config
@@ -32,10 +32,20 @@ if __name__ == "__main__":
             DA.prepare_train_loader()
             DA.train()
         elif config.train.type == "MLM_distillation":
-            MD = MLM_distill(config.train)
+            MD = MLMDistill(config.train)
             MD.prepare_train_set()
             MD.prepare_train_loader()
             MD.train()
+        elif config.train.type == "MWER":
+            MWER = MWERTraining(config.train)
+            
+            train_dataset = MWER.prepare_dataset(config.train.train_data_path)
+            dev_dataset = MWER.prepare_dataset(config.train.dev_data_path)
+
+            train_dataloader = MWER.prepare_train_loader(train_dataset)
+            dev_dataloader = MWER.prepare_train_loader(dev_dataset)
+            
+            MWER.train(train_dataloader, dev_dataloader)
 
     # do inference
     if "scoring" in config.actions:

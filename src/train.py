@@ -1,7 +1,7 @@
 import os
 import json
 import copy
-
+import numpy as np
 import torch
 import torch.optim as optim
 from torch.nn import MSELoss
@@ -160,7 +160,7 @@ class DomainAdaptation():
             return id_tensor, label_tensor, mask_tensor
 
 
-class MLM_distill():
+class MLMDistill():
     def __init__(self, config) -> None:
         self.config = config
         self.model = SentenceBertLM(
@@ -269,3 +269,180 @@ class MLM_distill():
             label = self.label_list[idx]
             attention_mask_tensor = torch.tensor(self.attention_mask_list[idx], dtype=torch.long)
             return ids_tensor, label, attention_mask_tensor
+
+
+class MWERTraining(): 
+    def __init__(self, config) -> None:
+        self.config = config
+        self.model = SentenceBertLM(
+            bert=BertModel.from_pretrained(config.model)
+        )
+        self.tokenizer = load_tokenizer(config.model)
+         
+    def prepare_dataset(self, data_path):
+        corpus = get_recog_data(data_path, "hyp_text", self.config.max_utts, flatten=False)
+        ASR_score_list = get_recog_data(data_path, "hyp_score", self.config.max_utts)
+        cer_list = get_recog_data(data_path, "cer", self.config.max_utts)
+        
+        ids_list = []
+        attention_mask_list = []
+        utt_id_list = []
+
+        for utt_id, utt_hyps_text in enumerate(corpus):
+            for hyp_text in utt_hyps_text:
+                token_seq = self.tokenizer.tokenize(hyp_text)
+                if len(token_seq) < self.config.max_seq_len:
+                    ids_list.append(
+                        self.tokenizer.convert_tokens_to_ids(
+                            ["[CLS]"] + token_seq + ["[SEP]"]
+                        )
+                    )
+
+                    attention_mask_list.append([1]*len(["[CLS]"] + token_seq + ["[SEP]"]))
+
+                    utt_id_list.append(utt_id)
+
+        dataset = self.trainDataset(ids_list, attention_mask_list, ASR_score_list, cer_list, utt_id_list)
+        
+        return dataset
+
+    def prepare_train_loader(self):
+        self.train_loader = DataLoader(
+            dataset=self.train_set,
+            collate_fn=self.collate,
+            batch_size=self.config.batch_size,
+        )
+        return self.train_loader
+
+    def collate(self, data):
+        id_tensor, mask_tensor, ASR_score_tensor, cer_tensor, utt_id_tensor = zip(*data)
+        
+        id_tensor = pad_sequence(id_tensor, batch_first=True)
+        mask_tensor = pad_sequence(mask_tensor, batch_first=True)
+
+        return id_tensor, mask_tensor, ASR_score_tensor, cer_tensor, utt_id_tensor
+
+    def train(self, train_dataloader, dev_loader):
+        train_loss_record = [0]*self.config.epoch
+        dev_loss_record = [0]*self.config.epoch
+
+        for epoch_id in range(1, self.config.epoch+1):
+            print("Epoch {}/{}".format(epoch_id, self.config.epoch))
+            
+            train_loss_record[epoch_id-1] = self.train_one_epoch(train_dataloader)
+            print("epoch ", epoch_id, "loss: ", train_loss_record)
+
+            dev_loss_record[epoch_id-1] = self.evaluate(dev_loader)
+            print("epoch ", epoch_id, "loss: ", dev_loss_record)
+
+            torch.save(
+                self.model.state_dict(),
+                os.path.join(self.config.output_path, 'checkpoint_{}.pth'.format(epoch_id))
+            )
+
+            with open(self.config.output_path + "loss.txt", "w") as f:
+                f.write("train epoch loss: \n")
+                f.write(" ".join([str(loss) for loss in train_loss_record]))
+                f.write("dev epoch loss: \n")
+                f.write(" ".join([str(loss) for loss in dev_loss_record]))
+    
+    def train_one_epoch(self, train_dataloader):
+        optimizer = optim.AdamW(self.model.parameters(), lr=1e-5)
+
+        self.model = self.model.to(self.config.device)
+        self.model.train()
+        
+        alpha = 0.5
+        epoch_loss = 0
+        loop = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
+        for _, (id_tensor, label_tensor, mask_tensor, ASR_scores, cers, utt_ids) in loop:
+
+            id_tensor = id_tensor.to(self.config.device)
+            label_tensor = label_tensor.to(self.config.device)
+            mask_tensor = mask_tensor.to(self.config.device)
+
+            optimizer.zero_grad()
+
+            with torch.set_grad_enabled(True):
+                output = self.model(
+                    input_ids=id_tensor,
+                    attention_mask=mask_tensor
+                )
+                LM_scores = torch.squeeze(output)
+
+                final_scores = (1-alpha)*ASR_scores + alpha*LM_scores
+                final_scores = torch.exp(-1 * final_scores)
+
+                hypothesis_probilities /= torch.sum(hypothesis_probilities)
+
+                average_cer = torch.sum(cers) / len(cers)
+
+                loss = torch.dot(hypothesis_probilities, torch.sub(cers, average_cer, alpha=1))
+                loss.backward()
+                optimizer.step()
+            
+            epoch_loss += loss.item()
+        
+        epoch_loss /= len(train_dataloader)
+        return epoch_loss
+
+    def evaluate(self, dev_dataloader):
+        self.model = self.model.to(self.config.device)
+        self.model.eval()
+        
+        all_ASR_scores = torch.tensor([])
+        all_LM_scores = torch.tensor([])
+        all_cers = torch.tensor([])
+
+        epoch_loss = 0
+        loop = tqdm(enumerate(dev_dataloader), total=len(dev_dataloader))
+        for _, (id_tensor, label_tensor, mask_tensor, ASR_scores, cers) in loop:
+
+            id_tensor = id_tensor.to(self.config.device)
+            label_tensor = label_tensor.to(self.config.device)
+            mask_tensor = mask_tensor.to(self.config.device)
+
+            with torch.no_grad():
+                output = self.model(
+                    input_ids=id_tensor,
+                    attention_mask=mask_tensor
+                )
+                LM_scores = torch.squeeze(output)
+                
+                all_ASR_scores = torch.cat(all_ASR_scores, ASR_scores)
+                all_LM_scores = torch.cat(all_LM_scores, LM_scores)
+                all_cers = torch.cat(all_cers, cers)
+                
+        final_scores = all_ASR_scores + all_LM_scores
+        hypothesis_probilities = torch.exp(-1 * final_scores)
+        hypothesis_probilities /= torch.sum(hypothesis_probilities)
+
+        average_cer = torch.sum(all_cers) / len(all_cers)
+
+        loss = torch.dot(hypothesis_probilities, torch.sub(cers, average_cer, alpha=1))
+            
+        epoch_loss += loss.item()
+        
+        epoch_loss /= len(dev_dataloader)
+        return epoch_loss
+
+    class trainDataset(Dataset):
+        def __init__(self, ids_list, attention_mask_list, ASR_score_list, cer_list, utt_id_list):
+            self.ids_list = ids_list
+            self.attention_mask_list = attention_mask_list
+            self.ASR_score_list = ASR_score_list
+            self.cer_list = cer_list
+            self.utt_id_list = utt_id_list
+
+        def __len__(self):
+            return len(self.ids_list)
+        
+        def __getitem__(self, idx):
+            ids_tensor = torch.tensor([])
+
+            ids_tensor = torch.tensor(self.ids_list[idx], dtype=torch.long)
+            attention_mask_tensor = torch.tensor(self.attention_mask_list[idx], dtype=torch.long)
+            ASR_score_tensor = torch.tensor(self.ASR_score_list[idx], dtype=torch.long)
+            cer_tensor = torch.tensor(self.cer_list[idx], dtype=torch.long)
+
+            return ids_tensor, attention_mask_tensor, ASR_score_tensor, cer_tensor

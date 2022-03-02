@@ -32,7 +32,7 @@ def load_model(model_name, model_weight_path=None):
         model.load_state_dict(checkpoint)
     return model
 
-def get_recog_data(data_path, type, max_utts=-1):
+def get_recog_data(data_path, type, max_utts=-1, flatten=True):
 
     json_data = json.load(open(data_path, "r", encoding="utf-8"))
 
@@ -63,7 +63,7 @@ def get_recog_data(data_path, type, max_utts=-1):
             all_scores.append(utt_scores)
             if utt_count == max_utts:
                 break
-        return all_scores
+        return flatten_2dlist(all_scores) if flatten else all_scores
 
     elif type == "hyp_text":
         all_text = []
@@ -76,7 +76,27 @@ def get_recog_data(data_path, type, max_utts=-1):
             all_text.append(utt_text)
             if utt_count == max_utts:
                 break
-        return all_text
+        return flatten_2dlist(all_text) if flatten  else all_text
+
+    elif type == "cer":
+        all_cer = []
+        for utt_count, (utt_id, recog_content) in enumerate(json_data.items(), 1):
+            utt_cer = []
+            for hyp_id, hyp_content in recog_content.items():
+                if hyp_id == "ref":
+                    continue
+                utt_cer.append(hyp_content["cer"])
+            all_cer.append(utt_cer)
+            if utt_count == max_utts:
+                break
+        return flatten_2dlist(all_cer) if flatten  else all_cer
+
+def flatten_2dlist(input_list):
+    output_list = []
+    for l in input_list:
+        output_list += l
+    return output_list
+
 
 def collate(data):
     ids_tensor, attention_mask, masked_token_pos, masked_token_id, seq_id = zip(*data)
