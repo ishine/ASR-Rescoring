@@ -1,14 +1,26 @@
+from ssl import OP_NO_SSLv2
 import torch
 import numpy as np
 from transformers import BertForMaskedLM, BertTokenizer
 from models import sentence_bert_lm
 from train import load_model
 from sklearn.preprocessing import normalize
-'''
-model = load_model("bert-base-chinese", "/home/chkuo/chkuo/experiment/rescoring/result/checkpoint_10.pth")
-model(input_ids = torch.tensor([[[1,2,3],[11,2,3],[21,2,3]]]))
-'''
-a = [[1,2],[3,4]]
-a = np.array(a)
-a = normalize(a, norm="max", axis=0)
-print(a)
+from util.minimum_edit_distance import minimum_edit_distance
+
+ref = list("abcde")
+hyp = list("cdef")
+
+
+output = minimum_edit_distance(hyp, ref)
+
+
+ref = []
+hyp = []
+ops = []
+for (ref_token, hyp_token, op_token) in output:
+    ref.append(ref_token)
+    hyp.append(hyp_token)
+    ops.append(op_token)
+print(ref)
+print(hyp)
+print(ops)
