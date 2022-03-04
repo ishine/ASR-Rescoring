@@ -299,28 +299,54 @@ class MWERTraining():
                     )
 
                     attention_mask_list.append([1]*len(["[CLS]"] + token_seq + ["[SEP]"]))
-
+                    
                     utt_id_list.append(utt_id)
 
         dataset = self.trainDataset(ids_list, attention_mask_list, ASR_score_list, cer_list, utt_id_list)
         
         return dataset
 
-    def prepare_train_loader(self):
+    def prepare_train_loader(self, dataset):
         self.train_loader = DataLoader(
-            dataset=self.train_set,
+            dataset=dataset,
             collate_fn=self.collate,
             batch_size=self.config.batch_size,
         )
         return self.train_loader
 
     def collate(self, data):
-        id_tensor, mask_tensor, ASR_score_tensor, cer_tensor, utt_id_tensor = zip(*data)
-        
-        id_tensor = pad_sequence(id_tensor, batch_first=True)
-        mask_tensor = pad_sequence(mask_tensor, batch_first=True)
+        id_list, mask_list, ASR_score_list, cer_list, utt_ids = zip(*data)
+        tmp = []
+        for id in id_list:
+            tmp += id
+        id_list = tmp
 
-        return id_tensor, mask_tensor, ASR_score_tensor, cer_tensor, utt_id_tensor
+        tmp = []
+        for mask in mask_list:
+            tmp += mask
+        mask_list = tmp
+
+        tmp = []
+        for ASR_score in ASR_score_list:
+            tmp += ASR_score
+        ASR_score_list = tmp
+
+        tmp = []
+        for cer in cer_list:
+            tmp += cer
+        cer_list = tmp
+
+        tmp = []
+        for utt in utt_ids:
+            tmp += utt
+        utt_ids = tmp
+
+        id_tensor = pad_sequence([torch.tensor(id, dtype=torch.long) for id in id_list ], batch_first=True)
+        mask_tensor = pad_sequence([torch.tensor(mask, dtype=torch.long) for mask in mask_list ], batch_first=True)
+        ASR_score_tensor = torch.tensor(ASR_score_list)
+        cer_tensor = torch.tensor(cer_list)
+
+        return id_tensor, mask_tensor, ASR_score_tensor, cer_tensor, utt_ids
 
     def train(self, train_dataloader, dev_loader):
         train_loss_record = [0]*self.config.epoch
@@ -330,10 +356,10 @@ class MWERTraining():
             print("Epoch {}/{}".format(epoch_id, self.config.epoch))
             
             train_loss_record[epoch_id-1] = self.train_one_epoch(train_dataloader)
-            print("epoch ", epoch_id, "loss: ", train_loss_record)
+            print("epoch ", epoch_id, "train loss: ", train_loss_record[epoch_id-1])
 
             dev_loss_record[epoch_id-1] = self.evaluate(dev_loader)
-            print("epoch ", epoch_id, "loss: ", dev_loss_record)
+            print("epoch ", epoch_id, "dev loss: ", dev_loss_record[epoch_id-1])
 
             torch.save(
                 self.model.state_dict(),
@@ -341,9 +367,9 @@ class MWERTraining():
             )
 
             with open(self.config.output_path + "loss.txt", "w") as f:
-                f.write("train epoch loss: \n")
-                f.write(" ".join([str(loss) for loss in train_loss_record]))
-                f.write("dev epoch loss: \n")
+                f.write("train loss: \n")
+                f.write(" ".join([str(loss) for loss in train_loss_record]) + "\n")
+                f.write("dev loss: \n")
                 f.write(" ".join([str(loss) for loss in dev_loss_record]))
     
     def train_one_epoch(self, train_dataloader):
@@ -355,12 +381,13 @@ class MWERTraining():
         alpha = 0.5
         epoch_loss = 0
         loop = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
-        for _, (id_tensor, label_tensor, mask_tensor, ASR_scores, cers, utt_ids) in loop:
+        for _, (id_tensor, mask_tensor, ASR_scores, cers, utt_ids) in loop:
+            batch_loss = 0
 
             id_tensor = id_tensor.to(self.config.device)
-            label_tensor = label_tensor.to(self.config.device)
             mask_tensor = mask_tensor.to(self.config.device)
-
+            ASR_scores = ASR_scores.to(self.config.device)
+            cers = cers.to(self.config.device)
             optimizer.zero_grad()
 
             with torch.set_grad_enabled(True):
@@ -370,19 +397,39 @@ class MWERTraining():
                 )
                 LM_scores = torch.squeeze(output)
 
-                final_scores = (1-alpha)*ASR_scores + alpha*LM_scores
-                final_scores = torch.exp(-1 * final_scores)
+                final = False
+                for index, current_id in enumerate(utt_ids):
+                    if index == len(utt_ids)-1:
+                        final = True
+                    else:
+                        next_id = utt_ids[index+1]
+    
+                    if current_id != next_id or final:
+                        # new segment(new utt)
+                        segment_start = utt_ids.index(current_id)
+                        segment_end = len(utt_ids) if final else utt_ids.index(next_id)
 
-                hypothesis_probilities /= torch.sum(hypothesis_probilities)
+                        final_scores = ASR_scores[segment_start: segment_end] + LM_scores[segment_start: segment_end]
+                        
+                        # 避免score太大，導致後免exponential 運算無法計算
+                        shift_final_scores = final_scores - torch.mean(final_scores)
 
-                average_cer = torch.sum(cers) / len(cers)
+                        numerator = torch.exp(-1 * shift_final_scores)
+                        denominator = torch.sum(numerator)
+                        hypothesis_probilities = numerator / denominator
+                                                
+                        average_cer = torch.sum(cers[segment_start: segment_end]) / (segment_end - segment_start)
 
-                loss = torch.dot(hypothesis_probilities, torch.sub(cers, average_cer, alpha=1))
-                loss.backward()
+                        batch_loss += torch.dot(
+                            hypothesis_probilities,
+                            cers[segment_start: segment_end] - average_cer
+                        )
+
+                batch_loss.backward()
                 optimizer.step()
-            
-            epoch_loss += loss.item()
-        
+
+            epoch_loss += batch_loss.item()
+
         epoch_loss /= len(train_dataloader)
         return epoch_loss
 
@@ -390,18 +437,14 @@ class MWERTraining():
         self.model = self.model.to(self.config.device)
         self.model.eval()
         
-        all_ASR_scores = torch.tensor([])
-        all_LM_scores = torch.tensor([])
-        all_cers = torch.tensor([])
-
         epoch_loss = 0
         loop = tqdm(enumerate(dev_dataloader), total=len(dev_dataloader))
-        for _, (id_tensor, label_tensor, mask_tensor, ASR_scores, cers) in loop:
+        for _, (id_tensor, mask_tensor, ASR_scores, cers, utt_ids) in loop:
 
             id_tensor = id_tensor.to(self.config.device)
-            label_tensor = label_tensor.to(self.config.device)
             mask_tensor = mask_tensor.to(self.config.device)
-
+            ASR_scores = ASR_scores.to(self.config.device)
+            cers = cers.to(self.config.device)
             with torch.no_grad():
                 output = self.model(
                     input_ids=id_tensor,
@@ -409,40 +452,71 @@ class MWERTraining():
                 )
                 LM_scores = torch.squeeze(output)
                 
-                all_ASR_scores = torch.cat(all_ASR_scores, ASR_scores)
-                all_LM_scores = torch.cat(all_LM_scores, LM_scores)
-                all_cers = torch.cat(all_cers, cers)
-                
-        final_scores = all_ASR_scores + all_LM_scores
-        hypothesis_probilities = torch.exp(-1 * final_scores)
-        hypothesis_probilities /= torch.sum(hypothesis_probilities)
+                final = False
+                for index, current_id in enumerate(utt_ids):
+                    if index == len(utt_ids)-1:
+                        final = True
+                    else:
+                        next_id = utt_ids[index+1]
+    
+                    if current_id != next_id or final:
+                        # new segment(new utt)
+                        segment_start = utt_ids.index(current_id)
+                        segment_end = len(utt_ids) if final else utt_ids.index(next_id)
 
-        average_cer = torch.sum(all_cers) / len(all_cers)
+                        final_scores = ASR_scores[segment_start: segment_end] + LM_scores[segment_start: segment_end]
+                        
+                        # 避免score太大，導致後免exponential 運算無法計算
+                        shift_final_scores = final_scores - torch.mean(final_scores)
 
-        loss = torch.dot(hypothesis_probilities, torch.sub(cers, average_cer, alpha=1))
-            
-        epoch_loss += loss.item()
-        
+                        numerator = torch.exp(-1 * shift_final_scores)
+                        denominator = torch.sum(numerator)
+                        hypothesis_probilities = numerator / denominator
+                                                
+                        average_cer = torch.sum(cers[segment_start: segment_end]) / (segment_end - segment_start)
+
+                        epoch_loss += torch.dot(
+                            hypothesis_probilities,
+                            cers[segment_start: segment_end] - average_cer
+                        )
+
+        epoch_loss = epoch_loss.item()
         epoch_loss /= len(dev_dataloader)
+        
         return epoch_loss
 
     class trainDataset(Dataset):
-        def __init__(self, ids_list, attention_mask_list, ASR_score_list, cer_list, utt_id_list):
+        def __init__(self, ids_list, attention_mask_list, ASR_score_list, cer_list, utt_list):
             self.ids_list = ids_list
             self.attention_mask_list = attention_mask_list
             self.ASR_score_list = ASR_score_list
             self.cer_list = cer_list
-            self.utt_id_list = utt_id_list
+            self.utt_list = utt_list
 
         def __len__(self):
-            return len(self.ids_list)
+            return max(self.utt_list) + 1
         
-        def __getitem__(self, idx):
-            ids_tensor = torch.tensor([])
+        def __getitem__(self, utt_id):
+            segment_start = self.utt_list.index(utt_id)
+            final = False
+            for index in range(segment_start, len(self.utt_list)):
+                if index == len(self.utt_list)-1:
+                        final = True
+                else:
+                    next_utt_id = self.utt_list[index+1]
+                    
+                if utt_id != next_utt_id or final:
+                    segment_end = len(self.utt_list) if final else self.utt_list.index(next_utt_id)
+                    break
 
-            ids_tensor = torch.tensor(self.ids_list[idx], dtype=torch.long)
-            attention_mask_tensor = torch.tensor(self.attention_mask_list[idx], dtype=torch.long)
-            ASR_score_tensor = torch.tensor(self.ASR_score_list[idx], dtype=torch.long)
-            cer_tensor = torch.tensor(self.cer_list[idx], dtype=torch.long)
+            ids_list = self.ids_list[segment_start: segment_end]
 
-            return ids_tensor, attention_mask_tensor, ASR_score_tensor, cer_tensor
+            attention_mask_list = self.attention_mask_list[segment_start: segment_end]
+            
+            ASR_score_list = self.ASR_score_list[segment_start: segment_end]
+            
+            cer_list = self.cer_list[segment_start: segment_end]
+            
+            utt_id_list = self.utt_list[segment_start: segment_end]
+
+            return ids_list, attention_mask_list, ASR_score_list, cer_list, utt_id_list

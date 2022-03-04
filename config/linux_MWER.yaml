@@ -1,0 +1,35 @@
+exp_tag: "MWER training"
+
+actions:
+  - train
+
+# training actions
+train:
+  type: "MWER"
+  device: "cuda"
+  model: "bert-base-chinese"
+  train_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  dev_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  text_type: "hyp_text"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER"
+  max_utts: 9999999
+  max_seq_len: 50
+  batch_size: 10
+  epoch: 20
+
+# inference actions
+scoring:
+  type: "token_level"
+  device: "cuda"
+  model: "bert-base-chinese"
+  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/PLL_train_on_trainset/checkpoint_10.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/train.am.json"
+  text_type: "hyp"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/train.lm.json"
+  max_utts: 999999
+  batch_size: 100
+
+rescoring:
+  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.lm.json"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"

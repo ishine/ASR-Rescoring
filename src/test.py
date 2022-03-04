@@ -1,13 +1,9 @@
-from ssl import OP_NO_SSLv2
-import torch
 import numpy as np
-from transformers import BertForMaskedLM, BertTokenizer
-from models import sentence_bert_lm
-from train import load_model
-from sklearn.preprocessing import normalize
+import torch
 from util.minimum_edit_distance import minimum_edit_distance
-a = torch.tensor([])
-a = torch.cat((a, torch.tensor([1,2]))) 
-print( torch.cat((a, torch.tensor([1,2]))) )
-print(max(a.to(torch.int)))
-print([0]*max(a.to(torch.int)))
+
+a = np.array([100, 110, 150])
+print(np.exp(a) / np.sum(np.exp(a)))
+b = a - np.average(a)
+b = np.exp(b)
+print(b / np.sum(b))
