@@ -1,7 +1,4 @@
 /data/*.json
-
 /result
-
 /src/test.py
-
 __pycache__
