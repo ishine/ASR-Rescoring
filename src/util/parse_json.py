@@ -1,5 +1,6 @@
 import json
 from typing import List
+import unittest
 
 
 def flatten_2dlist(input_list):
@@ -17,7 +18,7 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
     Args:
         file_path: The path of the json file you want to parse.
         requirements: The item you want to get from the json file.
-            requirements can be "ref_text", "hyp_text", "hyp_score"
+            requirements can be "all", "ref_text", "hyp_text", "hyp_score"
             or "hyp_cer" 
         max_utts: How many utterances you want to parse.
             -1 means parse all utterances.
@@ -30,8 +31,15 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
 
     output = {}
 
-    json_data = json.load(open(file_path, "r", encoding="utf-8")).values()
-    
+    json_data = json.load(open(file_path, "r", encoding="utf-8"))
+
+    if "all" in requirements:
+        output["all"] = {utt_id: utt_content 
+                         for utt_count, (utt_id, utt_content) in enumerate(json_data.items(), 1)
+                         if utt_count <= max_utts}
+
+    json_data = json_data.values()
+
     if "ref_text" in requirements:
         ref_text = [utt["ref"] 
                     for utt_count, utt in enumerate(json_data, 1)

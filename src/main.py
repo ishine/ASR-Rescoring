@@ -9,6 +9,7 @@ from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring, get_recog_data
 from rescorer import Rescorer
 from util.config import parse_config
+from error_detection_training import ErrorDetectionInference
 
 if __name__ == "__main__":
 
@@ -70,6 +71,11 @@ if __name__ == "__main__":
             scorer.prepare_inference_set()
             scorer.prepare_inference_loader()
             scorer.score()
+        elif config.scoring.type == "error_detection_training":
+            scorer = ErrorDetectionInference(config.scoring)
+            dataset = scorer.prepare_dataset()
+            dataloader = scorer.prepare_dataloader(dataset)
+            scorer.scoring(dataloader)
 
     if "rescoring" in config.actions:
         rescorer = Rescorer(config.rescoring)
