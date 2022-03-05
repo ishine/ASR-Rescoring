@@ -161,7 +161,7 @@ class ErrorDetectionTraining():
         # we don't want to compute loss on [CLS], [SEP] and padding position 
         # turn output tensor's value into 1 at those position
         # then the computation latter will that the loss become 0
-        output = torch.where(label==2, torch.full(output.size(), 1.0), output)
+        output = torch.where(label==2, torch.full(output.size(), 1.0).to(self.config.device), output)
 
         # if label == 0, loss will be -log(1-output)
         # if label == 1, loss will be -log(output)
