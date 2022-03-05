@@ -2,6 +2,7 @@ import csv
 import json
 from torch import nn
 from tqdm import tqdm
+from jiwer import cer
 
 # espnet asr recognition result path
 input_root = "/home/chkuo/chkuo/experiment/bert_semantic_rescoring/train_sp_pytorch_train"
@@ -12,7 +13,7 @@ inputs = [train_path, dev_path, test_path]
 
 
 # json output files path 
-output_root = "/home/chkuo/chkuo/experiment/mlm-scoring/examples/asr-aishell1-espnet/data"
+output_root = "/home/chkuo/chkuo/experiment/ASR-Rescoring/data"
 train_dataset_path = output_root + "/train.am.json"
 dev_dataset_path = output_root + "/dev.am.json"
 test_dataset_path = output_root + "/test.am.json"
@@ -36,17 +37,22 @@ for input_index, input in enumerate(inputs):
                 formatted_data[utt] = {}
                
                 # 取得 reference sentence
-                formatted_data[utt]["ref"] = candidate_list[0]["text"]
+                ref = candidate_list[0]["text"]
+                formatted_data[utt]["ref"] = ref
                 
                 # 取得 hypothesis sentences 的 scores 與 text
+                formatted_data[utt]["hyp"] = {}
                 for candidate_index in range(n_best):
-                    formatted_data[utt]["hyp_{}".format(candidate_index+1)] = {}
+                    formatted_data[utt]["hyp"]["hyp_{}".format(candidate_index+1)] = {}
 
-                    formatted_data[utt]["hyp_{}".format(candidate_index+1)]["score"] = \
+                    formatted_data[utt]["hyp"]["hyp_{}".format(candidate_index+1)]["score"] = \
                         candidate_list[candidate_index]["score"]
 
-                    formatted_data[utt]["hyp_{}".format(candidate_index+1)]["text"] = \
-                        candidate_list[candidate_index]["rec_text"].strip("<eos>")
+                    hyp = candidate_list[candidate_index]["rec_text"].strip("<eos>")
+                    formatted_data[utt]["hyp"]["hyp_{}".format(candidate_index+1)]["text"] = hyp
+
+                    formatted_data[utt]["hyp"]["hyp_{}".format(candidate_index+1)]["cer"] = \
+                        cer(ref, hyp)
 
             #json_string = json.dumps(formatted_data, ensure_ascii=False)
             json.dump(formatted_data, out_file, ensure_ascii=False, indent=4)
