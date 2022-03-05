@@ -1,16 +1,21 @@
 import sys
+from typing import List
 import numpy as np
 
-def minimum_edit_distance(hypthesis: list, reference:list):
+def levenshtein_distance_alignment(hypthesis: List[str] or str, reference: List[str] or str):
     '''
-    
+    What kind of operation that make hypothesis sentence become reference sentence.
+
     "U": unchange
     "S": substitution
     "I": Insertion
     "D": Deletion
 
     '''
-
+    if isinstance(hypthesis, str):
+        hypthesis = list(hypthesis)
+    if isinstance(reference, str):
+        reference = list(reference)
 
     hypthesis = ["[start]"] + hypthesis
     reference = ["[start]"] + reference
@@ -23,10 +28,10 @@ def minimum_edit_distance(hypthesis: list, reference:list):
 
     for i in range(1, len_hyp):
         cost_matrix[i][0] = i
-        operation_matrix[i][0] = "I"
+        operation_matrix[i][0] = "D"
     for j in range(1, len_ref):
         cost_matrix[0][j] = j
-        operation_matrix[0][j] = "D"
+        operation_matrix[0][j] = "I"
 
     for i in range(1, len_hyp):
         for j in range(1, len_ref):
@@ -34,8 +39,8 @@ def minimum_edit_distance(hypthesis: list, reference:list):
                 cost_matrix[i][j] = cost_matrix[i-1][j-1]
             else:
                 substitution_cost = cost_matrix[i-1][j-1] + 1
-                insertion_cost = cost_matrix[i-1][j] + 1
-                deletion_cost = cost_matrix[i][j-1] + 1
+                insertion_cost = cost_matrix[i][j-1] + 1
+                deletion_cost = cost_matrix[i-1][j] + 1
 
                 priority = {"S": substitution_cost, "I": insertion_cost, "D": deletion_cost}
 
@@ -64,12 +69,12 @@ def minimum_edit_distance(hypthesis: list, reference:list):
             i -= 1
             j -= 1
         
-        elif operation_matrix[i][j] == "I":
-            output.append(("[blank]", hypthesis[i], "I"))
+        elif operation_matrix[i][j] == "D":
+            output.append(("*", hypthesis[i], "D"))
             i -= 1
         
-        elif operation_matrix[i][j] == "D":
-            output.append((reference[j], "[blank]", "D"))
+        elif operation_matrix[i][j] == "I":
+            output.append((reference[j], "*", "I"))
             j -= 1
 
     output.reverse()

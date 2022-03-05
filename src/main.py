@@ -5,9 +5,11 @@ import ruamel.yaml as yaml
 from jiwer import cer
 
 from train import DomainAdaptation, MLMDistill, MWERTraining
+from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring, get_recog_data
 from rescorer import Rescorer
 from util.config import parse_config
+from error_detection_training import ErrorDetectionInference
 
 if __name__ == "__main__":
 
@@ -46,6 +48,16 @@ if __name__ == "__main__":
             dev_dataloader = MWER.prepare_train_loader(dev_dataset)
             
             MWER.train(train_dataloader, dev_dataloader)
+        elif config.train.type == "error_detection_training":
+            ED = ErrorDetectionTraining(config.train)
+            
+            train_dataset = ED.prepare_dataset(config.train.train_data_path)
+            dev_dataset = ED.prepare_dataset(config.train.dev_data_path)
+
+            train_dataloader = ED.prepare_dataloader(train_dataset)
+            dev_dataloader = ED.prepare_dataloader(dev_dataset)
+
+            ED.train(train_dataloader, dev_dataloader)
 
     # do inference
     if "scoring" in config.actions:
@@ -59,6 +71,11 @@ if __name__ == "__main__":
             scorer.prepare_inference_set()
             scorer.prepare_inference_loader()
             scorer.score()
+        elif config.scoring.type == "error_detection_training":
+            scorer = ErrorDetectionInference(config.scoring)
+            dataset = scorer.prepare_dataset()
+            dataloader = scorer.prepare_dataloader(dataset)
+            scorer.scoring(dataloader)
 
     if "rescoring" in config.actions:
         rescorer = Rescorer(config.rescoring)
