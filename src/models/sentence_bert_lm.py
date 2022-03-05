@@ -17,9 +17,9 @@ class SentenceBertLM(torch.nn.Module):
         output = self.linear(cls)
         return output
 
-class ErrorDetectBert(torch.nn.Module):
+class ErrorDetectionBert(torch.nn.Module):
     def __init__(self, bert):
-        super(ErrorDetectBert, self).__init__()
+        super(ErrorDetectionBert, self).__init__()
         self.bert = bert
         self.linear = torch.nn.Linear(in_features=self.bert.config.hidden_size, out_features=1)
         self.sigmoid = torch.nn.Sigmoid()
