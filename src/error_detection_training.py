@@ -8,7 +8,6 @@ from transformers import BertTokenizer, BertModel
 from tqdm import tqdm
 
 from util.parse_json import parse_json
-from util.levenshtein import levenshtein_distance_alignment
 from util.saving import model_saving, loss_saving, json_saving
 from models.sentence_bert_lm import ErrorDetectionBert
 
@@ -33,22 +32,20 @@ class ErrorDetectionTraining():
         attention_masks = []
         labels = []
 
-        for hyps, ref in zip(parse_result["hyp_text"], parse_result["ref_text"]):
+        num_data = len(parse_result["ref_text"])
+        for hyps, ref in tqdm(zip(parse_result["hyp_text"], parse_result["ref_text"]), total=num_data):
 
             for hyp in hyps:
+                
                 word_pieces = self.tokenizer.tokenize(hyp)
                 input_ids.append(
                     self.tokenizer.convert_tokens_to_ids(
                         ["[CLS]"] + word_pieces + ["[SEP]"]
                     )
                 )
-
-                attention_masks = [
-                    [1]*len(row)
-                    for row in input_ids
-                ]
-
+                
                 alignment = levenshtein_distance_alignment(hypthesis=hyp, reference=ref)
+
                 operation_label_map = {"U": 0, "S": 1, "D": 1}
                 # "2" represents "[CLS]" and "[SEP]" token in labels
                 labels.append(
@@ -58,6 +55,11 @@ class ErrorDetectionTraining():
                     if operation_token in operation_label_map.keys()] +
                     [2]
                 )
+
+        attention_masks = [
+            [1]*len(row)
+            for row in input_ids
+        ]
 
         dataset = self.MyDataset(input_ids, attention_masks, labels)
         
@@ -225,10 +227,10 @@ class ErrorDetectionInference():
                     )
                 )
 
-                attention_masks = [
-                    [1]*len(row)
-                    for row in input_ids
-                ]
+        attention_masks = [
+            [1]*len(row)
+            for row in input_ids
+        ]
 
         self.dataset = self.MyDataset(input_ids, attention_masks)
         
