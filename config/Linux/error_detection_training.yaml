@@ -20,14 +20,14 @@ train:
 # inference actions
 scoring:
   type: "error_detection_training"
-  device: "cpu"
+  device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/checkpoint_5.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/checkpoint_14.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
   text_type: "hyp"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.lm5.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/dev.lm.json"
   max_utts: 999999
-  batch_size: 100
+  batch_size: 300
 
 rescoring:
   dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"

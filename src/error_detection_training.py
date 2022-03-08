@@ -283,7 +283,7 @@ class ErrorDetectionInference():
 
         self.model = self.model.to(self.config.device)
         self.model.eval()
-
+        
         loop = tqdm(enumerate(dataloader), total=len(dataloader))
         for _, batch in loop:
             input_ids_tensor = batch["input_ids_tensor"].to(self.config.device)
@@ -294,7 +294,7 @@ class ErrorDetectionInference():
                     input_ids=input_ids_tensor,
                     attention_mask=attention_masks_tensor
                 ).squeeze(dim=2)
-            
+
                 batch_scores = torch.sum(output, dim=1)
                 batch_scores = -1 * batch_scores
                 np.add.at(self.scores, batch["seq_id"], batch_scores.cpu().numpy())
