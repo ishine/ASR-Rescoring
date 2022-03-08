@@ -2,7 +2,7 @@ import sys
 from typing import List
 import numpy as np
 
-def levenshtein_distance_alignment(reference: List[str] or str, hypthesis: List[str] or str):
+def levenshtein_distance_alignment(reference: List[str] or str, hypothesis: List[str] or str):
     '''
     What kind of operation that make hypothesis sentence become reference sentence.
 
@@ -12,15 +12,15 @@ def levenshtein_distance_alignment(reference: List[str] or str, hypthesis: List[
     "D": Deletion
 
     '''
-    if isinstance(hypthesis, str):
-        hypthesis = list(hypthesis)
+    if isinstance(hypothesis, str):
+        hypothesis = list(hypothesis)
     if isinstance(reference, str):
         reference = list(reference)
 
-    hypthesis = ["[start]"] + hypthesis
+    hypothesis = ["[start]"] + hypothesis
     reference = ["[start]"] + reference
 
-    len_hyp = len(hypthesis)
+    len_hyp = len(hypothesis)
     len_ref = len(reference)
 
     cost_matrix = np.zeros((len_hyp, len_ref))
@@ -35,7 +35,7 @@ def levenshtein_distance_alignment(reference: List[str] or str, hypthesis: List[
 
     for i in range(1, len_hyp):
         for j in range(1, len_ref):
-            if hypthesis[i] == reference[j]:
+            if hypothesis[i] == reference[j]:
                 cost_matrix[i][j] = cost_matrix[i-1][j-1]
             else:
                 substitution_cost = cost_matrix[i-1][j-1] + 1
@@ -64,21 +64,21 @@ def levenshtein_distance_alignment(reference: List[str] or str, hypthesis: List[
     while i >= 1 or j >= 1:
         if operation_matrix[i][j] == "U":
             aligned_ref += reference[j]
-            aligned_hyp += hypthesis[i]
+            aligned_hyp += hypothesis[i]
             aligned_op += "U"
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "S":
             aligned_ref += reference[j]
-            aligned_hyp += hypthesis[i]
+            aligned_hyp += hypothesis[i]
             aligned_op += "S"
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "D":
             aligned_ref += "*"
-            aligned_hyp += hypthesis[i]
+            aligned_hyp += hypothesis[i]
             aligned_op += "D"
             i -= 1
         
