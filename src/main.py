@@ -6,9 +6,10 @@ from jiwer import cer
 
 from train import DomainAdaptation, MLMDistill, MWERTraining
 from error_detection_training import ErrorDetectionTraining
-from inference import SentencelevelScoring, TokenlevelScoring, get_recog_data
+from inference import SentencelevelScoring, TokenlevelScoring
 from rescorer import Rescorer
 from util.config import parse_config
+from util.parse_json import parse_json
 from error_detection_training import ErrorDetectionInference
 
 if __name__ == "__main__":
@@ -84,27 +85,14 @@ if __name__ == "__main__":
 
         print("best_weight: ", best_weight)
 
-        test_ref_text = get_recog_data(
+        test_ASR_score, test_ref_text, test_hyp_text = parse_json(
             config.rescoring.test_asr_data_path,
-            type="ref",
+            requirements=["hyp_score", "ref_text", "hyp_text"],
             max_utts=config.rescoring.max_utts)
 
-
-        test_hyp_text = get_recog_data(
-            config.rescoring.test_asr_data_path,
-            type="hyp_text",
-            max_utts=config.rescoring.max_utts)
-
-
-        # rescore test set
-        test_ASR_score = get_recog_data(
-            config.rescoring.test_asr_data_path,
-            type="hyp_score",
-            max_utts=config.rescoring.max_utts)
-        
-        test_LM_score = get_recog_data(
+        test_LM_score = parse_json(
             config.rescoring.test_lm_data_path,
-            type="hyp_score",
+            requirements=["hyp_score"],
             max_utts=config.rescoring.max_utts)
 
         final_score = rescorer.rescore(
@@ -112,7 +100,7 @@ if __name__ == "__main__":
             test_ASR_score,
             test_LM_score,
             test_hyp_text
-            )
+        )
 
         # 取出最高分的hyp sentences
         predict_text = rescorer.get_highest_score_hyp(final_score, test_hyp_text)
@@ -120,4 +108,4 @@ if __name__ == "__main__":
         # 計算error rate
         cer = cer(test_ref_text, predict_text)
 
-        print("cer: ", cer)
+        print("test cer: ", cer)

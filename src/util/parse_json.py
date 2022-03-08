@@ -28,7 +28,6 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
 
     """
 
-
     output = {}
 
     json_data = json.load(open(file_path, "r", encoding="utf-8"))
@@ -78,4 +77,4 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
         ]
         output["alignment"] = alignment
 
-    return output
+    return [output[requirement] for requirement in requirements]

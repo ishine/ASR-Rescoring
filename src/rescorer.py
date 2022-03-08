@@ -25,23 +25,19 @@ class Rescorer():
         self.config = config
 
     def find_best_weight(self):
-        parse_result = parse_json(
+        dev_ASR_score, dev_ref_text, dev_hyp_text = parse_json(
             self.config.dev_asr_data_path,
             requirements=["hyp_score", "ref_text", "hyp_text"],
             max_utts=self.config.max_utts)
 
-        dev_ASR_score = parse_result["hyp_score"]
-        dev_ref_text = parse_result["ref_text"]
-        dev_hyp_text = parse_result["hyp_text"]
-
         dev_LM_score = parse_json(
             self.config.dev_lm_data_path,
             requirements=["hyp_score"],
-            max_utts=self.config.max_utts)["hyp_score"]
+            max_utts=self.config.max_utts)
 
         best_cer = sys.float_info.max
 
-        for weight in np.arange(0.0, 1.0, 0.01):
+        for weight in np.arange(0.0, 10.0, 0.1):
             # 將ASR分數和LM分數做 weighted sum(rescore)
             final_score = self.rescore(weight, dev_ASR_score, dev_LM_score, dev_hyp_text)
            
