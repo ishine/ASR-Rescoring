@@ -28,14 +28,21 @@ class ErrorDetectionTraining():
             flatten=False
         )
 
+        all_alignment = parse_json(
+            file_path=self.config.train_alignment_path,
+            requirements=["alignment"],
+            max_utts=self.config.max_utts,
+            flatten=False
+        )["alignment"]
+
         input_ids = []
         attention_masks = []
         labels = []
 
         num_data = len(parse_result["ref_text"])
-        for hyps, ref in tqdm(zip(parse_result["hyp_text"], parse_result["ref_text"]), total=num_data):
+        for hyps, ref, alignments_utt_level in tqdm(zip(parse_result["hyp_text"], parse_result["ref_text"], all_alignment), total=num_data):
 
-            for hyp in hyps:
+            for hyp, alignments in zip(hyps, alignments_utt_level):
                 
                 word_pieces = self.tokenizer.tokenize(hyp)
                 input_ids.append(
@@ -43,15 +50,13 @@ class ErrorDetectionTraining():
                         ["[CLS]"] + word_pieces + ["[SEP]"]
                     )
                 )
-                
-                alignment = levenshtein_distance_alignment(hypthesis=hyp, reference=ref)
 
                 operation_label_map = {"U": 0, "S": 1, "D": 1}
                 # "2" represents "[CLS]" and "[SEP]" token in labels
                 labels.append(
                     [2] + 
                     [operation_label_map[operation_token]
-                    for (_, __, operation_token) in alignment
+                    for _, __, operation_token in zip(alignments[0], alignments[1], alignments[2])
                     if operation_token in operation_label_map.keys()] +
                     [2]
                 )
@@ -60,7 +65,7 @@ class ErrorDetectionTraining():
             [1]*len(row)
             for row in input_ids
         ]
-
+        print(labels)
         dataset = self.MyDataset(input_ids, attention_masks, labels)
         
         return dataset
@@ -209,7 +214,6 @@ class ErrorDetectionInference():
                 self.UttID_and_HypID_to_SeqID[(utt_id, hyp_id)] = seq_id
                 seq_id += 1
 
-
     def prepare_dataset(self):
         self.tokenizer = BertTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.config.model
@@ -292,7 +296,7 @@ class ErrorDetectionInference():
                 ).squeeze(dim=2)
             
                 batch_scores = torch.sum(output, dim=1)
-                
+                batch_scores = -1 * batch_scores
                 np.add.at(self.scores, batch["seq_id"], batch_scores.cpu().numpy())
 
         for utt_id, utt_content in self.output_json.items():

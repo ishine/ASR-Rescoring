@@ -9,7 +9,7 @@ root = "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/"
 train_dataset_path = root + "train.am.json"
 dev_dataset_path = root + "dev.am.json"
 test_dataset_path = root + "test.am.json"
-data_paths = [train_dataset_path, dev_dataset_path, test_dataset_path]
+data_paths = [ test_dataset_path]
 
 for data_path in data_paths:
     with open(data_path, "r", encoding="utf-8") as in_file:

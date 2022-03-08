@@ -1,9 +1,10 @@
+from ast import parse
 import sys
 from typing import List
 import numpy as np
 from jiwer import cer
 
-from inference import get_recog_data
+from util.parse_json import parse_json
 from sklearn.preprocessing import normalize
 def length_penalty(alpha, sentence: str = None, sentences: list = None):
     
@@ -24,25 +25,19 @@ class Rescorer():
         self.config = config
 
     def find_best_weight(self):
-        dev_ASR_score = get_recog_data(
+        parse_result = parse_json(
             self.config.dev_asr_data_path,
-            type="hyp_score",
+            requirements=["hyp_score", "ref_text", "hyp_text"],
             max_utts=self.config.max_utts)
-        
-        dev_LM_score = get_recog_data(
+
+        dev_ASR_score = parse_result["hyp_score"]
+        dev_ref_text = parse_result["ref_text"]
+        dev_hyp_text = parse_result["hyp_text"]
+
+        dev_LM_score = parse_json(
             self.config.dev_lm_data_path,
-            type="hyp_score",
-            max_utts=self.config.max_utts)
-        
-        dev_ref_text = get_recog_data(
-            self.config.dev_asr_data_path,
-            type="ref",
-            max_utts=self.config.max_utts)
-        
-        dev_hyp_text = get_recog_data(
-            self.config.dev_asr_data_path,
-            type="hyp_text",
-            max_utts=self.config.max_utts)
+            requirements=["hyp_score"],
+            max_utts=self.config.max_utts)["hyp_score"]
 
         best_cer = sys.float_info.max
 
@@ -70,10 +65,10 @@ class Rescorer():
         LP = length_penalty(alpha=1, sentences=list(hyp_text))
         LP = np.array(LP).reshape(LM_score.shape)
 
-        #final_score = ((1-weight)*ASR_score + weight*LM_score)/LP
+        final_score = ((1-weight)*ASR_score + weight*LM_score)/LP
         #ASR_score = normalize(ASR_score, norm = "max", axis=1)
         #LM_score = normalize(LM_score, norm = "max", axis=1)
-        final_score = (1-weight)*ASR_score + weight*LM_score
+        #final_score = (1-weight)*ASR_score + weight*LM_score
         return final_score
     
     def get_highest_score_hyp(self, final_score, dev_hyp_text):

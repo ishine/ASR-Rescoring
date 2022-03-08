@@ -1,34 +1,38 @@
 exp_tag: "error detection training"
 
 actions:
-  - train
+  - rescoring
 
 # training actions
 train:
   type: "error_detection_training"
   device: "cuda:0"
   model: "bert-base-chinese"
-  train_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
-  dev_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training"
-  max_utts: 9999999
+  train_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  train_alignment_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.alignment.json"
+  dev_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/test"
+  max_utts: 3
   max_seq_len: 50
   batch_size: 100
-  epoch: 20
+  epoch: 2
 
 # inference actions
 scoring:
   type: "error_detection_training"
   device: "cpu"
   model: "bert-base-chinese"
-  model_weight_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\error_detection_training\\checkpoint_10.pth"
-  asr_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/checkpoint_5.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
   text_type: "hyp"
-  output_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\error_detection_training\\train.lm.json"
-  max_utts: 10
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.lm5.json"
+  max_utts: 999999
   batch_size: 100
 
 rescoring:
-  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
-  lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/dev.lm.json"
+  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/test.lm.json"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/error_detection_training/test.am_lm.json"
+  max_utts: 999999

@@ -19,7 +19,7 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
         file_path: The path of the json file you want to parse.
         requirements: The item you want to get from the json file.
             requirements can be "all", "ref_text", "hyp_text", "hyp_score"
-            or "hyp_cer" 
+            , "hyp_cer" or "alignment" 
         max_utts: How many utterances you want to parse.
             -1 means parse all utterances.
         flatten: Whether to flatten each the return result.
@@ -71,4 +71,11 @@ def parse_json(file_path: str, requirements: List[str], max_utts: int = -1, flat
         ]
         output["hyp_cer"] = flatten_2dlist(hyp_cer) if flatten else hyp_cer
     
+    if "alignment" in requirements:
+        alignment = [
+            [hyp["alignment"] for hyp in utt_hyps.values()]
+            for utt_hyps in all_hyps
+        ]
+        output["alignment"] = alignment
+
     return output
