@@ -2,7 +2,7 @@ import sys
 from typing import List
 import numpy as np
 
-def levenshtein_distance_alignment(hypthesis: List[str] or str, reference: List[str] or str):
+def levenshtein_distance_alignment(reference: List[str] or str, hypthesis: List[str] or str):
     '''
     What kind of operation that make hypothesis sentence become reference sentence.
 
@@ -55,28 +55,42 @@ def levenshtein_distance_alignment(hypthesis: List[str] or str, reference: List[
                 operation_matrix[i][j] = op_id
 
 
-    output = []
+    aligned_ref = ""
+    aligned_hyp = ""
+    aligned_op = ""
+
     i = len_hyp - 1
     j = len_ref - 1
     while i >= 1 or j >= 1:
         if operation_matrix[i][j] == "U":
-            output.append((reference[j], hypthesis[i], "U"))
+            aligned_ref += reference[j]
+            aligned_hyp += hypthesis[i]
+            aligned_op += "U"
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "S":
-            output.append((reference[j], hypthesis[i], "S"))
+            aligned_ref += reference[j]
+            aligned_hyp += hypthesis[i]
+            aligned_op += "S"
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "D":
-            output.append(("*", hypthesis[i], "D"))
+            aligned_ref += "*"
+            aligned_hyp += hypthesis[i]
+            aligned_op += "D"
             i -= 1
         
         elif operation_matrix[i][j] == "I":
-            output.append((reference[j], "*", "I"))
+            aligned_ref += reference[j]
+            aligned_hyp += "*"
+            aligned_op += "I"
             j -= 1
 
-    output.reverse()
-    
+    output = []
+    for string in [aligned_ref, aligned_hyp, aligned_op]:
+        reversed_string=''.join(reversed(string))
+        output.append(reversed_string)
+
     return output

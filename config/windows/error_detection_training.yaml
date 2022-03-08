@@ -29,6 +29,9 @@ scoring:
   batch_size: 100
 
 rescoring:
-  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
-  lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  dev_asr_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\dev.am.json"
+  dev_lm_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\error_detection_training\\dev.lm.json"
+  test_asr_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+  test_lm_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\error_detection_training\\test.lm.json"
+  output_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\error_detection_training\\test.am_lm.json"
+  max_utts: 3
