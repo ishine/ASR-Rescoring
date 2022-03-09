@@ -62,6 +62,7 @@ class MWERTraining():
             dataset=dataset,
             collate_fn=self.collate,
             batch_size=self.config.batch_size,
+            num_workers=3
         )
         return dataloader
 
@@ -134,7 +135,10 @@ class MWERTraining():
                     attention_mask=attention_masks
                 ).squeeze(dim=1)
 
-                LM_scores = torch.reshape(LM_scores, (self.config.batch_size, self.config.n_best))
+                LM_scores = torch.reshape(
+                    LM_scores,
+                    (int(len(LM_scores)/self.config.n_best), self.config.n_best)
+                )
 
                 batch_loss = self.compute_loss(asr_scores, LM_scores, hyp_cer)
 
