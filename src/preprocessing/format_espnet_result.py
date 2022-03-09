@@ -5,18 +5,18 @@ from jiwer import cer
 from levenshtein import levenshtein_distance_alignment
 
 # espnet asr recognition result path
-input_root = "/home/chkuo/chkuo/experiment/bert_semantic_rescoring/train_sp_pytorch_train"
-train_path = input_root + "/decode_train_sp_decode_lm_4/data.json"
-dev_path = input_root + "/decode_dev_decode_lm_4/data.json"
-test_path = input_root + "/decode_test_decode_lm_4/data.json"
-inputs = [train_path, dev_path]
+input_root = "/home/chkuo/chkuo/experiment/ASR-Rescoring/data"
+train_path = input_root + "/espnet_train_data.json"
+dev_path = input_root + "/espnet_dev_data.json"
+test_path = input_root + "/espnet_test_data.json"
+inputs = [train_path, dev_path, test_path]
 
 # json output files path 
 output_root = "/home/chkuo/chkuo/experiment/ASR-Rescoring/data"
 train_dataset_path = output_root + "/train.am.json"
 dev_dataset_path = output_root + "/dev.am.json"
 test_dataset_path = output_root + "/test.am.json"
-outputs = [train_path, dev_path]
+outputs = [train_dataset_path, dev_dataset_path, test_dataset_path]
 
 for input_path, output_path in zip(inputs, outputs):
     with open(input_path, "r") as in_file:

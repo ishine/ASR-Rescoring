@@ -21,26 +21,19 @@ class ErrorDetectionTraining():
             pretrained_model_name_or_path=self.config.model
         )
 
-        parse_result = parse_json(
+        hyp_text, all_alignment = parse_json(
             file_path=file_path,
-            requirements=["ref_text", "hyp_text"],
+            requirements=["hyp_text", "alignment"],
             max_utts=self.config.max_utts,
             flatten=False
         )
-
-        all_alignment = parse_json(
-            file_path=self.config.train_alignment_path,
-            requirements=["alignment"],
-            max_utts=self.config.max_utts,
-            flatten=False
-        )["alignment"]
 
         input_ids = []
         attention_masks = []
         labels = []
 
-        num_data = len(parse_result["ref_text"])
-        for hyps, ref, alignments_utt_level in tqdm(zip(parse_result["hyp_text"], parse_result["ref_text"], all_alignment), total=num_data):
+        num_data = len(hyp_text)
+        for hyps, alignments_utt_level in tqdm(zip(hyp_text, all_alignment), total=num_data):
 
             for hyp, alignments in zip(hyps, alignments_utt_level):
                 
@@ -65,7 +58,7 @@ class ErrorDetectionTraining():
             [1]*len(row)
             for row in input_ids
         ]
-        print(labels)
+
         dataset = self.MyDataset(input_ids, attention_masks, labels)
         
         return dataset
@@ -198,14 +191,12 @@ class ErrorDetectionTraining():
 class ErrorDetectionInference(): 
     def __init__(self, config) -> None:
         self.config = config
-        parse_result = parse_json(
+        self.output_json, self.hyp_text  = parse_json(
             file_path=self.config.asr_data_path,
             requirements=["all", "hyp_text"],
             max_utts=self.config.max_utts,
             flatten=False
         )
-        self.output_json = parse_result["all"]
-        self.hyp_text = parse_result["hyp_text"]
 
         self.UttID_and_HypID_to_SeqID = {}
         seq_id = 0

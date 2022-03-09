@@ -1,6 +1,5 @@
 import os
 import argparse
-
 import ruamel.yaml as yaml
 from jiwer import cer
 
@@ -53,13 +52,13 @@ if __name__ == "__main__":
             ED = ErrorDetectionTraining(config.train)
             
             train_dataset = ED.prepare_dataset(config.train.train_data_path)
-            #dev_dataset = ED.prepare_dataset(config.train.dev_data_path)
+            dev_dataset = ED.prepare_dataset(config.train.dev_data_path)
 
-            #train_dataloader = ED.prepare_dataloader(train_dataset)
-            #dev_dataloader = ED.prepare_dataloader(dev_dataset)
+            train_dataloader = ED.prepare_dataloader(train_dataset)
+            dev_dataloader = ED.prepare_dataloader(dev_dataset)
 
-            #ED.train(train_dataloader, dev_dataloader)
-
+            ED.train(train_dataloader, dev_dataloader)
+            
     # do inference
     if "scoring" in config.actions:
         if config.scoring.type == "token_level":

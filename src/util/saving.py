@@ -12,8 +12,8 @@ def model_saving(file_path: str, model_dict, checkpoint_num: int):
 
 
 def loss_saving(file_path: str, loss: Dict):
-    for loss_type, loss_record in loss.items():
-        with open(file_path + "loss.txt", "w") as f:
+    with open(file_path + "/loss.txt", "w") as f:
+        for loss_type, loss_record in loss.items():    
             f.write(f"{loss_type} loss: \n")
             f.write(" ".join([str(loss) for loss in loss_record]) + "\n")
 
