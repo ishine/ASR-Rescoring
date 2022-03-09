@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import torch
 import torch.optim as optim
@@ -29,30 +28,29 @@ class ErrorDetectionTraining():
         )
 
         input_ids = []
-        attention_masks = []
         labels = []
-
         num_data = len(hyp_text)
         for hyps, alignments_utt_level in tqdm(zip(hyp_text, all_alignment), total=num_data):
-
             for hyp, alignments in zip(hyps, alignments_utt_level):
                 
                 word_pieces = self.tokenizer.tokenize(hyp)
-                input_ids.append(
-                    self.tokenizer.convert_tokens_to_ids(
-                        ["[CLS]"] + word_pieces + ["[SEP]"]
-                    )
-                )
 
-                operation_label_map = {"U": 0, "S": 1, "D": 1}
-                # "2" represents "[CLS]" and "[SEP]" token in labels
-                labels.append(
-                    [2] + 
-                    [operation_label_map[operation_token]
-                    for _, __, operation_token in zip(alignments[0], alignments[1], alignments[2])
-                    if operation_token in operation_label_map.keys()] +
-                    [2]
-                )
+                if len(word_pieces) < self.config.max_seq_len:
+                    input_ids.append(
+                        self.tokenizer.convert_tokens_to_ids(
+                            ["[CLS]"] + word_pieces + ["[SEP]"]
+                        )
+                    )
+
+                    operation_label_map = {"U": 0, "S": 1, "D": 1}
+                    # "2" represents "[CLS]" and "[SEP]" token in labels
+                    labels.append(
+                        [2] + 
+                        [operation_label_map[operation_token]
+                        for _, __, operation_token in zip(alignments[0], alignments[1], alignments[2])
+                        if operation_token in operation_label_map.keys()] +
+                        [2]
+                    )
 
         attention_masks = [
             [1]*len(row)
@@ -121,7 +119,6 @@ class ErrorDetectionTraining():
 
 
     def run_one_epoch(self, dataloader, train_mode: bool):
-
         self.model = self.model.to(self.config.device)
         
         if train_mode:

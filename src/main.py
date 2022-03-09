@@ -3,7 +3,8 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from train import DomainAdaptation, MLMDistill, MWERTraining
+from train import DomainAdaptation, MLMDistill
+from mwer_training import MWERTraining
 from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring
 from rescorer import Rescorer
@@ -44,8 +45,8 @@ if __name__ == "__main__":
             train_dataset = MWER.prepare_dataset(config.train.train_data_path)
             dev_dataset = MWER.prepare_dataset(config.train.dev_data_path)
 
-            train_dataloader = MWER.prepare_train_loader(train_dataset)
-            dev_dataloader = MWER.prepare_train_loader(dev_dataset)
+            train_dataloader = MWER.prepare_dataloader(train_dataset)
+            dev_dataloader = MWER.prepare_dataloader(dev_dataset)
             
             MWER.train(train_dataloader, dev_dataloader)
         elif config.train.type == "error_detection_training":
