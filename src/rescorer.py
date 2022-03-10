@@ -36,7 +36,7 @@ class Rescorer():
 
         best_cer = sys.float_info.max
 
-        for weight in tqdm(np.arange(0.0, 1.0, 0.5)):
+        for weight in tqdm(np.arange(0.0, 1.0, 0.01)):
             # 將ASR分數和LM分數做 weighted sum(rescore)
             final_score = self.rescore(weight, dev_ASR_score, dev_LM_score, dev_hyp_text)
            

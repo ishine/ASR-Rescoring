@@ -1,7 +1,7 @@
 exp_tag: "error detection training"
 
 actions:
-  - train
+  - scoring
 
 # training actions
 train:
@@ -21,17 +21,16 @@ scoring:
   type: "error_detection_training"
   device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/checkpoint_10.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  text_type: "hyp"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/test.lm.json"
+  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training2/checkpoint_9.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training2/dev.lm9.json"
   max_utts: 9999999
   batch_size: 300
 
 rescoring:
   dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/dev.lm.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training2/dev.lm.json"
   test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/error_detection_training/test.am_lm.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/error_detection_training2/test.lm.json"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/error_detection_training2/test.am_lm.json"
   max_utts: 999999
