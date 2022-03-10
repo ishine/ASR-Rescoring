@@ -278,6 +278,7 @@ class ErrorDetectionInference():
             attention_masks_tensor = batch["attention_masks_tensor"].to(self.config.device)
 
             with torch.set_grad_enabled(False):
+
                 output = self.model(
                     input_ids=input_ids_tensor,
                     attention_mask=attention_masks_tensor
