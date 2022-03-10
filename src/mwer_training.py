@@ -191,3 +191,29 @@ class MWERTraining():
             ) 
 
             return input_ids_tensor, attention_masks_tensor, asr_scores_tensor, hyp_cer_tensor
+
+
+class MWEDTraining(MWERTraining):
+    def compute_loss(self, asr_scores, LM_scores, hyp_cer):
+        print(asr_scores)
+        print(LM_scores)
+        print(hyp_cer)
+        final_scores = asr_scores + LM_scores
+        print(final_scores)
+        '''
+        error_distribution = torch.softmax(hyp_cer, dim=1)
+        print(error_distribution)
+
+        print(torch.sum(final_scores,dim=1))
+        print(torch.sum(hyp_cer,dim=1))
+        temperature = torch.sum(final_scores,dim=1) / torch.sum(hyp_cer,dim=1)
+        print(temperature)
+        
+        print(hyp_cer/temperature)
+        score_distribution = torch.softmax(hyp_cer/temperature, dim=1)
+        print(score_distribution)
+
+        batch_loss = torch.kl_div(score_distribution, error_distribution, reduction="sum")
+        print(batch_loss)
+        '''
+        return 0

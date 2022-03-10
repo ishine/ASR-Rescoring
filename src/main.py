@@ -4,7 +4,7 @@ import ruamel.yaml as yaml
 from jiwer import cer
 
 from train import DomainAdaptation, MLMDistill
-from mwer_training import MWERTraining
+from mwer_training import MWERTraining, MWEDTraining
 from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring
 from rescorer import Rescorer
@@ -59,7 +59,16 @@ if __name__ == "__main__":
             dev_dataloader = ED.prepare_dataloader(dev_dataset)
 
             ED.train(train_dataloader, dev_dataloader)
+        elif config.train.type == "MWED":
+            MWED = MWEDTraining(config.train)
             
+            train_dataset = MWED.prepare_dataset(config.train.train_data_path)
+            dev_dataset = MWED.prepare_dataset(config.train.dev_data_path)
+
+            train_dataloader = MWED.prepare_dataloader(train_dataset)
+            dev_dataloader = MWED.prepare_dataloader(dev_dataset)
+            
+            MWED.train(train_dataloader, dev_dataloader)
     # do inference
     if "scoring" in config.actions:
         if config.scoring.type == "token_level":
