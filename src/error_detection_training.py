@@ -209,7 +209,7 @@ class ErrorDetectionInference():
 
         input_ids = []
         attention_masks = []
-
+        LM_score_masks = []
         for hyps in self.hyp_text:
             for hyp in hyps:
                 word_pieces = self.tokenizer.tokenize(hyp)
@@ -218,13 +218,16 @@ class ErrorDetectionInference():
                         ["[CLS]"] + word_pieces + ["[SEP]"]
                     )
                 )
+                LM_score_masks.append(
+                    [0] + [1]*word_pieces + [0]
+                )
 
         attention_masks = [
             [1]*len(row)
             for row in input_ids
         ]
 
-        self.dataset = self.MyDataset(input_ids, attention_masks)
+        self.dataset = self.MyDataset(input_ids, attention_masks, LM_score_masks)
         
         return self.dataset
 
@@ -239,7 +242,7 @@ class ErrorDetectionInference():
 
 
     def collate(self, data):
-        input_ids_tensor, attention_masks_tensor, seq_idx = zip(*data)
+        input_ids_tensor, attention_masks_tensor, LM_score_masks_tensor, seq_idx = zip(*data)
 
         batch = {}
 
@@ -249,6 +252,10 @@ class ErrorDetectionInference():
         )
         batch["attention_masks_tensor"] = pad_sequence(
             attention_masks_tensor,
+            batch_first=True
+        )
+        batch["LM_score_masks_tensor"] = pad_sequence(
+            LM_score_masks_tensor, 
             batch_first=True
         )
         batch["seq_id"] = list(seq_idx)
@@ -276,6 +283,7 @@ class ErrorDetectionInference():
         for _, batch in loop:
             input_ids_tensor = batch["input_ids_tensor"].to(self.config.device)
             attention_masks_tensor = batch["attention_masks_tensor"].to(self.config.device)
+            LM_score_masks_tensor = batch["LM_score_masks_tensor"].to(self.config.device)
 
             with torch.set_grad_enabled(False):
                 output = self.model(
@@ -283,7 +291,10 @@ class ErrorDetectionInference():
                     attention_mask=attention_masks_tensor
                 ).squeeze(dim=2)
 
-                batch_scores = torch.sum(output, dim=1)
+                batch_scores = torch.sum(
+                    torch.where(LM_score_masks_tensor==1, output, 0),
+                    dim=1
+                )
                 batch_scores = -1 * batch_scores
                 np.add.at(self.scores, batch["seq_id"], batch_scores.cpu().numpy())
 
@@ -296,9 +307,10 @@ class ErrorDetectionInference():
 
 
     class MyDataset(Dataset):
-        def __init__(self, input_ids, attention_masks):
+        def __init__(self, input_ids, attention_masks, LM_score_masks):
             self.input_ids = input_ids
             self.attention_masks = attention_masks
+            self.LM_score_masks = LM_score_masks
 
         def __len__(self):
             return len(self.input_ids)
@@ -306,5 +318,5 @@ class ErrorDetectionInference():
         def __getitem__(self, idx):
             input_ids_tensor = torch.tensor(self.input_ids[idx], dtype=torch.long)
             attention_masks_tensor = torch.tensor(self.attention_masks[idx], dtype=torch.long)
-
-            return input_ids_tensor, attention_masks_tensor, idx
+            LM_score_masks = torch.tensor(self.LM_score_masks[idx], dtype=torch.long)
+            return input_ids_tensor, attention_masks_tensor, LM_score_masks, idx
