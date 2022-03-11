@@ -24,6 +24,7 @@ class ErrorDetectionTraining():
             file_path=file_path,
             requirements=["hyp_text", "alignment"],
             max_utts=self.config.max_utts,
+            n_best=self.config.n_best,
             flatten=False
         )
 
@@ -154,18 +155,15 @@ class ErrorDetectionTraining():
 
     
     def compute_loss(self, output, label):
-        
-        # we don't want to compute loss on [CLS], [SEP] and padding position 
-        # turn output tensor's value into 1 at those position
-        # then the computation latter will that the loss become 0
-        output = torch.where(label==2, torch.full(output.size(), 1.0).to(self.config.device), output)
+        # alpha is used to balance different type of loss
+        alpha = 8.3
 
-        # if label == 0, loss will be -log(1-output)
-        # if label == 1, loss will be -log(output)
-        # if label == 2, loss will be -log(output) = -log(1) = 0, that means don't compute the loss
-        loss_tensor = torch.where(label==0, (1-output), output)
+        same_tokens_output = 1 - output[label==0]
+        diff_token_output = output[label==1]
 
-        batch_loss = -1*torch.sum(torch.log(loss_tensor))
+        batch_loss = torch.sum(-1 * torch.log(same_tokens_output)) \
+            + alpha * torch.sum(-1 * torch.log(diff_token_output))
+
         return batch_loss
 
 
@@ -219,7 +217,7 @@ class ErrorDetectionInference():
                     )
                 )
                 LM_score_masks.append(
-                    [0] + [1]*word_pieces + [0]
+                    [0] + [1]*len(word_pieces) + [0]
                 )
 
         attention_masks = [
@@ -293,7 +291,7 @@ class ErrorDetectionInference():
                 ).squeeze(dim=2)
 
                 batch_scores = torch.sum(
-                    torch.where(LM_score_masks_tensor==1, output, 0),
+                    torch.where(LM_score_masks_tensor==1, output, torch.tensor(0, dtype=torch.float).to(self.config.device)),
                     dim=1
                 )
                 batch_scores = -1 * batch_scores

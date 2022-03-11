@@ -22,14 +22,17 @@ scoring:
   type: "MWER"
   device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/checkpoint_1.pth"
+  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/checkpoint_10.pth"
   asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
   output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
   n_best: 15
-  max_utts: 999999
-  batch_size: 7
+  max_utts: 10
+  batch_size: 300
 
 rescoring:
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.am_lm.json"
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.final.json"
+  max_utts: 9999999

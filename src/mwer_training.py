@@ -4,6 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer, BertModel
 from tqdm import tqdm
+import numpy as np
 
 from util.parse_json import parse_json
 from util.saving import json_saving, loss_saving, model_saving
@@ -215,9 +216,9 @@ class MWER_MWEDInference():
     def __init__(self, config) -> None:
         self.config = config
         
-        self.output_json, self.hyp_texts = parse_json(
+        self.output_json, self.hyp_texts, self.asr_scores = parse_json(
             file_path=self.config.asr_data_path,
-            requirements=["all", "hyp_text"],
+            requirements=["all", "hyp_text", "hyp_score"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
@@ -237,31 +238,29 @@ class MWER_MWEDInference():
         
         input_ids = []
         attention_masks = []
+        asr_scores = []
         for hyps in tqdm(self.hyp_texts, total=len(self.hyp_texts)):
-            
-            batch_ids = []
-            batch_attention_masks = []
             
             for hyp in hyps:
                 word_pieces = self.tokenizer.tokenize(hyp)
                 
-                batch_ids.append(
+                input_ids.append(
                     self.tokenizer.convert_tokens_to_ids(
                         ["[CLS]"] + word_pieces + ["[SEP]"]
                     )
                 )
 
-                batch_attention_masks.append(
+                attention_masks.append(
                     [1] * len(["[CLS]"] + word_pieces + ["[SEP]"])
                 )
+            
+            asr_scores.append(
+                [s for s in self.asr_scores]
+            )
 
-            if len(batch_ids) == self.config.n_best:
-                input_ids.append(batch_ids)
-                attention_masks.append(batch_attention_masks)
-
-        dataset = self.MyDataset(input_ids, attention_masks)
+        self.dataset = self.MyDataset(input_ids, attention_masks, asr_scores)
         
-        return dataset
+        return self.dataset
 
     def prepare_dataloader(self, dataset):
         dataloader = DataLoader(
@@ -273,20 +272,13 @@ class MWER_MWEDInference():
         return dataloader
 
     def collate(self, data):
-        input_ids_tensor_sets, attention_masks_tensor_sets = zip(*data)
-
+        input_ids_tensor, attention_masks_tensor, asr_scores_tensor, seq_idx = zip(*data)
+        print(asr_scores_tensor)
         batch = {}
-
-        batch["input_ids"] = []
-        for input_ids_tensor_set in input_ids_tensor_sets:
-            batch["input_ids"] += input_ids_tensor_set
-        batch["input_ids"] = pad_sequence(batch["input_ids"], batch_first=True)
-
-        batch["attention_masks"] = []
-        for attention_masks_tensor_set in attention_masks_tensor_sets:
-            batch["attention_masks"] += attention_masks_tensor_set
-        batch["attention_masks"] = pad_sequence(batch["attention_masks"], batch_first=True)
-
+        batch["input_ids"] = pad_sequence(input_ids_tensor, batch_first=True)
+        batch["attention_masks"] = pad_sequence(attention_masks_tensor, batch_first=True)
+        batch["asr_scores"] = asr_scores_tensor
+        batch["seq_id"] = list(seq_idx)
         return batch
 
     def scoring(self, dataloader):
@@ -299,6 +291,8 @@ class MWER_MWEDInference():
         self.run_one_epoch(dataloader)
     
     def run_one_epoch(self, dataloader):
+        self.scores = np.array([0.]*len(self.dataset))
+
         self.model = self.model.to(self.config.device)
         self.model.eval()
 
@@ -313,10 +307,7 @@ class MWER_MWEDInference():
                     attention_mask=attention_masks
                 ).squeeze(dim=1)
 
-                LM_scores = torch.reshape(
-                    LM_scores,
-                    (int(len(LM_scores)/self.config.n_best), self.config.n_best)
-                )
+                np.add.at(self.scores, batch["seq_id"], LM_scores.cpu().numpy())
         
         for utt_id, utt_content in self.output_json.items():
             for hyp_id, hyp_content in utt_content["hyp"].items():
@@ -325,18 +316,16 @@ class MWER_MWEDInference():
 
         json_saving(self.config.output_path, self.output_json)
     class MyDataset(Dataset):
-        def __init__(self, input_ids, attention_masks):
+        def __init__(self, input_ids, attention_masks, asr_scores):
             self.input_ids = input_ids
             self.attention_masks = attention_masks
+            self.asr_scores = asr_scores
 
         def __len__(self):
             return len(self.input_ids)
         
         def __getitem__(self, idx):
-            input_ids_tensor = [torch.tensor(ids, dtype=torch.long) 
-                for ids in self.input_ids[idx]]
-            
-            attention_masks_tensor = [torch.tensor(mask, dtype=torch.long) 
-                for mask in self.attention_masks[idx]]
-
-            return input_ids_tensor, attention_masks_tensor
+            input_ids_tensor = torch.tensor(self.input_ids[idx], dtype=torch.long)
+            attention_masks_tensor = torch.tensor(self.attention_masks[idx], dtype=torch.long)
+            asr_scores_tensor = torch.tensor(self.asr_scores[idx], dtype=torch.double)
+            return input_ids_tensor, attention_masks_tensor, asr_scores_tensor, idx
