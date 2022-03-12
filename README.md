@@ -1,7 +1,7 @@
 # ASR-Rescoring
 
                  method                 |                                paper                               |
-----------------------------------------|:------------------------------------------------------------------:|
+----------------------------------------|:------------------------------------------------------------------|
 PLL(Pseudo-Log-Likelihood scores)       | masked-language-model-scoring                                      |
 MD (MLM Distillation)                   | RescoreBERT Discriminative Speech Recognition Rescoring with BERT  |
 MWER (Minimum word error rate)          | RescoreBERT Discriminative Speech Recognition Rescoring with BERT  |
