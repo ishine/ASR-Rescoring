@@ -1,7 +1,5 @@
-import os
 import torch
 import torch.optim as optim
-from torch.nn import MSELoss
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer, BertForMaskedLM
