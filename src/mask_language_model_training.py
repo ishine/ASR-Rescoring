@@ -1,163 +1,171 @@
 import os
-import json
-import copy
-import numpy as np
 import torch
 import torch.optim as optim
 from torch.nn import MSELoss
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertForMaskedLM, BertTokenizer, BertModel
+from transformers import BertTokenizer, BertForMaskedLM
 from tqdm import tqdm
-from inference import get_recog_data
+
+from util.parse_json import parse_json
+from util.saving import model_saving, loss_saving
 from models.sentence_bert_lm import SentenceBertLM
 
-def get_corpus(data_path, type, max_utts):
-    utt_count = 0
-    corpus = []
-    json_data = json.load(open(data_path, "r", encoding="utf-8"))
-    for recog_content in json_data.values():
-        if type == "ref":
-            corpus.append(recog_content["ref"])
-            utt_count += 1
-            if utt_count == max_utts:
-                break
-    return corpus
-
-
-def load_model(model_name, model_weight_path=None):
-    model = BertForMaskedLM.from_pretrained(
-        pretrained_model_name_or_path=model_name
-    )
-    if model_weight_path != None:
-        checkpoint = torch.load(model_weight_path)
-        model.load_state_dict(checkpoint)
-    return model
-
-
-def load_tokenizer(model_name):
-    tokenizer = BertTokenizer.from_pretrained(
-        pretrained_model_name_or_path=model_name
-    )
-    return tokenizer
-
-
-def mask_sentence(tokenizer, sentence_wordpiece, mask_pos):
-    mask_token = tokenizer.convert_tokens_to_ids("[MASK]")
-    output = copy.deepcopy(sentence_wordpiece)
-    output[mask_pos] = mask_token
-    return output
-
-
-def collate(data):
-    id_tensor, label_tensor, mask_tensor = zip(*data)
-    
-    id_tensor = pad_sequence(id_tensor, batch_first=True)
-    label_tensor = pad_sequence(label_tensor, batch_first=True)
-    mask_tensor = pad_sequence(mask_tensor, batch_first=True)    
-    return id_tensor, label_tensor, mask_tensor
-
-
-class DomainAdaptation():
+class MaskedLanguageModelTraining():
     def __init__(self, config):
         self.config = config
-        if config.model_weight_path != None:
-            self.model = load_model(config.model, config.model_weight_path)
-        else:
-            self.model = load_model(config.model)
-        self.tokenizer = load_tokenizer(config.model)
-        self.corpus = get_corpus(config.train_data_path, config.text_type, config.max_utts)
         
-    def prepare_train_set(self):
-        # 過濾過長的seq，並把每個seq複製和它長度一樣的次數
-        label_set = []
-        id_set = []
-        mask_set = []
-        for seq in self.corpus:
-            token_seq = self.tokenizer.tokenize(seq)
-            if len(token_seq) < self.config.max_seq_len:
-                for mask_pos in range(len(token_seq)):
-                    label_set.append(
-                        self.tokenizer.convert_tokens_to_ids(
-                            ["[CLS]"] + token_seq + ["[SEP]"]
-                        )
-                    )
-                    masked_token_seq = mask_sentence(self.tokenizer, token_seq, mask_pos)
-                    id_set.append(
-                        self.tokenizer.convert_tokens_to_ids(
-                            ["[CLS]"] + masked_token_seq + ["[SEP]"]
-                        )
-                    )
-                    mask_set.append([1]*len(["[CLS]"] + token_seq + ["[SEP]"]))
-        self.train_set = self.trainDataset(id_set, label_set, mask_set)
-        
-        return self.train_set
-
-    def prepare_train_loader(self):
-        self.train_loader = DataLoader(
-            dataset=self.train_set,
-            collate_fn=collate,
-            batch_size=self.config.batch_size,
+        print("Parsing json data ...")
+        train_origin_data = parse_json(
+            file_path=config.train_data_path,
+            requirements=["ref_text"],
+            max_utts=self.config.max_utts,
+            n_best=self.config.n_best,
+            flatten=True
         )
-        return self.train_loader
+
+        dev_origin_data = parse_json(
+            file_path=config.dev_data_path,
+            requirements=["ref_text"],
+            max_utts=self.config.max_utts,
+            n_best=self.config.n_best,
+            flatten=True
+        )
+
+        print("loading tokenizer ...")
+        self.tokenizer = BertTokenizer.from_pretrained(
+            pretrained_model_name_or_path=self.config.model
+        )
+
+        print("Preparing training dataset ...")
+        self.train_dataset = self.prepare_dataset(train_origin_data)
+        print("Preparing developing dataset ...")
+        self.dev_dataset = self.prepare_dataset(dev_origin_data)
+    
+        self.train_dataloader = self.prepare_dataloader(self.train_dataset)
+        self.dev_dataloader = self.prepare_dataloader(self.dev_dataset)
+
+        print("loading model ...")
+        self.model = BertForMaskedLM.from_pretrained(self.config.model)
+        self.train()
+
+    def prepare_dataset(self, origin_data):
+        ref_texts = origin_data["ref_text"]
+
+        labels = []
+        input_ids = []
+
+        for ref in tqdm(ref_texts, total=len(ref_texts)):
+
+            token_seq = self.tokenizer.tokenize(ref)
+            if len(token_seq) < self.config.max_seq_len:
+
+                for mask_pos in range(len(token_seq)):
+                    labels.append(
+                        self.tokenizer.convert_tokens_to_ids(
+                                ["[CLS]"] + token_seq + ["[SEP]"]
+                        )
+                    )
+
+                    input_ids.append(
+                        self.tokenizer.convert_tokens_to_ids(
+                            ["[CLS]"]
+                            + token_seq[:mask_pos] + ["[MASK]"] + token_seq[mask_pos+1:]
+                            + ["[SEP]"]
+                        )
+                    )
+
+        attention_masks = [[1]*len(row) for row in input_ids]
+
+        dataset = self.MyDataset(input_ids, labels, attention_masks)
+        return dataset
+    
+    def prepare_dataloader(self, dataset):
+        dataloader = DataLoader(
+            dataset=dataset,
+            collate_fn=self.collate,
+            batch_size=self.config.batch_size,
+            num_workers=self.config.num_worker
+        )
+        return dataloader
+    
+    def collate(self, data):
+        input_ids_tensor, labels_tensor, attention_masks_tensor = zip(*data)
+
+        batch = {}
+        batch["input_ids"] = pad_sequence(input_ids_tensor, batch_first=True)
+        batch["labels"] = pad_sequence(labels_tensor, batch_first=True)
+        batch["attention_masks"] = pad_sequence(labels_tensor, batch_first=True)
+
+        return batch
 
     def train(self):
         train_loss_record = [0]*self.config.epoch
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=1e-5)
-        
+        dev_loss_record = [0]*self.config.epoch
+
         for epoch_id in range(1, self.config.epoch+1):
             print("Epoch {}/{}".format(epoch_id, self.config.epoch))
+            
+            train_loss_record[epoch_id-1] = self.run_one_epoch(self.train_dataloader, train_mode=True)
+            print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
 
-            self.model = self.model.to(self.config.device)
+            dev_loss_record[epoch_id-1] = self.run_one_epoch(self.dev_dataloader, train_mode=False)
+            print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
+
+            model_saving(self.config.output_path, self.model.state_dict(), epoch_id)
+        
+        loss_saving(
+            self.config.output_path,
+            {"train": train_loss_record, "dev": dev_loss_record}
+        )
+
+    def run_one_epoch(self, dataloader, train_mode: bool):
+        self.model = self.model.to(self.config.device)
+        
+        if train_mode:
             self.model.train()
-            
-            loop = tqdm(enumerate(self.train_loader), total=len(self.train_loader))
-            for _, (id_tensor, label_tensor, mask_tensor) in loop:
+            optimizer = optim.AdamW(self.model.parameters(), lr=1e-5)
+            optimizer.zero_grad()
+        else:
+            self.model.eval()
+
+        epoch_loss = 0
+        loop = tqdm(enumerate(dataloader), total=len(dataloader))
+        for _, batch in loop:
+            input_ids = batch["input_ids"].to(self.config.device)
+            attention_masks = batch["attention_masks"].to(self.config.device)
+            labels = batch["labels"].to(self.config.device)
+
+            with torch.set_grad_enabled(train_mode):
+                output = self.model(
+                    input_ids=input_ids,
+                    attention_mask=attention_masks,
+                    labels=labels
+                )
+
+                if train_mode:
+                    output.loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+            epoch_loss += output.loss.item()
                 
-                id_tensor = id_tensor.to(self.config.device)
-                label_tensor = label_tensor.to(self.config.device)
-                mask_tensor = mask_tensor.to(self.config.device)
+        return epoch_loss / len(dataloader)
 
-                self.optimizer.zero_grad()
-
-                with torch.set_grad_enabled(True):
-                    outputs = self.model(
-                        input_ids=id_tensor,
-                        labels=label_tensor,
-                        attention_mask=mask_tensor
-                    )
-                    loss = outputs[0]
-                    loss.backward()
-                    self.optimizer.step()
-                
-                train_loss_record[epoch_id-1] += loss.item()
-            
-            train_loss_record[epoch_id-1] /= len(self.train_loader)
-            print("epoch ", epoch_id, "loss: ", train_loss_record[epoch_id-1])
-
-            torch.save(
-                self.model.state_dict(),
-                os.path.join(self.config.output_path, 'checkpoint_{}.pth'.format(epoch_id+8))
-            )
-
-            with open(self.config.output_path + "loss.txt", "w") as f:
-                f.write("epoch loss: \n")
-                f.write(" ".join([str(loss) for loss in train_loss_record]))
-
-    class trainDataset(Dataset):
-        def __init__(self, id_set, label_set, mask_set):
-            self.id_set = id_set
-            self.label_set = label_set
-            self.mask_set = mask_set
+    class MyDataset(Dataset):
+        def __init__(self, input_ids, labels, attention_masks):
+            self.input_ids = input_ids
+            self.labels = labels
+            self.attention_masks = attention_masks
 
         def __len__(self):
-            return len(self.id_set)
+            return len(self.input_ids)
         
         def __getitem__(self, idx):
-            id_tensor = torch.tensor(self.id_set[idx], dtype=torch.long)
-            label_tensor = torch.tensor(self.label_set[idx], dtype=torch.long)
-            mask_tensor = torch.tensor(self.mask_set[idx], dtype=torch.long)
-            return id_tensor, label_tensor, mask_tensor
+            input_ids_tensor = torch.tensor(self.input_ids[idx], dtype=torch.long)
+            labels_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
+            attention_masks_tensor = torch.tensor(self.attention_masks[idx], dtype=torch.long)
+            return input_ids_tensor, labels_tensor, attention_masks_tensor
 
 
 class MLMDistill():

@@ -3,7 +3,7 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from train import DomainAdaptation, MLMDistill
+from mask_language_model_training import MaskedLanguageModelTraining, MLMDistill
 from mwer_training import MWERTraining, MWEDTraining, MWER_MWEDInference
 from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring
@@ -29,11 +29,8 @@ if __name__ == "__main__":
         if os.path.isdir(config.train.output_path) == False:
             os.mkdir(config.train.output_path, mode=0o755)
 
-        if config.train.type == "domain_adaptation":
-            DA = DomainAdaptation(config.train)
-            DA.prepare_train_set()
-            DA.prepare_train_loader()
-            DA.train()
+        if config.train.type == "MLM":
+            MaskedLanguageModelTraining(config.train)
         elif config.train.type == "MLM_distillation":
             MD = MLMDistill(config.train)
             MD.prepare_train_set()

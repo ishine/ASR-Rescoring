@@ -68,6 +68,7 @@ class ErrorDetectionTraining():
             dataset=dataset,
             collate_fn=self.collate,
             batch_size=self.config.batch_size,
+            num_workers=self.config.num_worker
         )
         return dataloader
 
