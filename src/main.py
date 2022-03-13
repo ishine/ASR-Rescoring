@@ -3,7 +3,8 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from mask_language_model_training import MaskedLanguageModelTraining, MLMDistill
+from mask_language_model_training import MaskedLanguageModelTraining
+from mlm_distillation import MLMDistill
 from mwer_training import MWERTraining, MWEDTraining, MWER_MWEDInference
 from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring
@@ -32,10 +33,7 @@ if __name__ == "__main__":
         if config.train.type == "MLM":
             MaskedLanguageModelTraining(config.train)
         elif config.train.type == "MLM_distillation":
-            MD = MLMDistill(config.train)
-            MD.prepare_train_set()
-            MD.prepare_train_loader()
-            MD.train()
+            MLMDistill(config.train)
         elif config.train.type == "MWER":
             MWER = MWERTraining(config.train)
             

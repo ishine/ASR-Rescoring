@@ -1,7 +1,5 @@
-exp_tag: "MLM_distill_no_discriminative"
-
 actions:
-  - rescoring
+  - train
 
 # training actions
 train:
@@ -22,7 +20,7 @@ scoring:
   type: "sentence_level"
   device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/checkpoint_5.pth"
+  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/checkpoint_50.pth"
   asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
   text_type: "hyp"
   output_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
@@ -30,8 +28,8 @@ scoring:
   batch_size: 100
 
 rescoring:
-  dev_asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/dev.am.json"
-  dev_lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/dev.lm.json"
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
   test_asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
   test_lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/test.lm.json"
   output_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.am_lm.json"
