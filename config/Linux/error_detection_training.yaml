@@ -16,6 +16,7 @@ train:
   max_seq_len: 50
   batch_size: 100
   epoch: 10
+  num_worker: 3
 
 # inference actions
 scoring:

@@ -158,10 +158,12 @@ class ErrorDetectionTraining():
     
     def compute_loss(self, output, label):
         # alpha is used to balance different type of loss
-        alpha = 8.3
+        #alpha = 8
 
         same_tokens_output = 1 - output[label==0]
         diff_token_output = output[label==1]
+
+        alpha = len(label[label==0]) / len(label[label==1])
 
         batch_loss = torch.sum(-1 * torch.log(same_tokens_output)) \
             + alpha * torch.sum(-1 * torch.log(diff_token_output))
