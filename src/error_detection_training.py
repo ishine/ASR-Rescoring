@@ -20,13 +20,14 @@ class ErrorDetectionTraining():
             pretrained_model_name_or_path=self.config.model
         )
 
-        hyp_text, all_alignment = parse_json(
+        parse_result = parse_json(
             file_path=file_path,
             requirements=["hyp_text", "alignment"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
         )
+        hyp_text, all_alignment = parse_result["hyp_text"], parse_result["alignment"]
 
         input_ids = []
         labels = []
