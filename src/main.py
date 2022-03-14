@@ -3,7 +3,7 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from mask_language_model_training import MaskedLanguageModelTraining
+from mask_language_model_training import MaskedLanguageModelTraining, PLLScoring
 from mlm_distillation import MLMDistill
 from mwer_training import MWERTraining, MWEDTraining, MWER_MWEDInference
 from error_detection_training import ErrorDetectionTraining
@@ -66,11 +66,8 @@ if __name__ == "__main__":
             MWED.train(train_dataloader, dev_dataloader)
     # do inference
     if "scoring" in config.actions:
-        if config.scoring.type == "token_level":
-            scorer = TokenlevelScoring(config.scoring)
-            scorer.prepare_inference_set()
-            scorer.prepare_inference_loader()
-            scorer.score()
+        if config.scoring.type == "PLL":
+            PLLScoring(config.scoring)
         elif config.scoring.type == "sentence_level":
             scorer = SentencelevelScoring(config.scoring)
             scorer.prepare_inference_set()

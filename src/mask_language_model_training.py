@@ -172,15 +172,14 @@ class PLLScoring():
 
         print("Parsing json data ...")
         parse_result = parse_json(
-            file_path=config.train_data_path,
-            requirements=["all", "hyp_text"],
+            file_path=config.asr_data_path,
+            requirements=["all"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
         )
 
         self.output_json = parse_result["all"]
-        self.hyp_texts = parse_result["hyp_text"]
         
         self.UttID_and_HypID_to_SeqID = {}
         seq_id = 0
@@ -197,7 +196,9 @@ class PLLScoring():
         )
         
         print("Preparing inference dataset ...")
+        print(self.UttID_and_HypID_to_SeqID)
         self.inference_dataset = self.prepare_dataset()
+        print(self.inference_dataset[0])
 
         self.inference_dataloader = self.prepare_dataloader(self.inference_dataset)
 
