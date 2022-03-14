@@ -1,5 +1,5 @@
 actions:
-  - train
+  - scoring
 
 # training actions
 train:
@@ -18,17 +18,14 @@ train:
 
 # inference actions
 scoring:
-  type: "token_level"
-  device: "cuda"
+  type: "PLL"
+  device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/PLL_train_on_trainset/checkpoint_10.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/train.am.json"
-  text_type: "hyp"
-  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/MLM_distill_no_discriminative/train.lm.json"
-  max_utts: 999999
-  batch_size: 100
+  model_weight_path: "/home/chkuo/chkuo/experiment/rescoring/result/domain_adaptation_training/checkpoint_1.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/rescoring/result/domain_adaptation_training/test.lm.json"
+  n_best: 15
+  max_utts: 10
+  batch_size: 300
 
 rescoring:
-  asr_data_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"
-  lm_data_path: "/home/chkuo/chkuo/experiment/rescoring/result/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/rescoring/data/test.am.json"

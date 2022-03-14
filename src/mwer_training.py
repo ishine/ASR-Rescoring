@@ -10,6 +10,7 @@ from util.parse_json import parse_json
 from util.saving import json_saving, loss_saving, model_saving
 from models.sentence_bert_lm import SentenceBertLM 
 
+
 class MWERTraining(): 
     def __init__(self, config) -> None:
         self.config = config
@@ -163,6 +164,7 @@ class MWERTraining():
         batch_loss = torch.sum(torch.mul(probility, (hyp_cer - average_cer)))
 
         return batch_loss
+    
     class MyDataset(Dataset):
         def __init__(self, input_ids, attention_masks, asr_scores, hyp_cers):
             self.input_ids = input_ids
@@ -193,6 +195,12 @@ class MWERTraining():
             return input_ids_tensor, attention_masks_tensor, asr_scores_tensor, hyp_cer_tensor
 
 
+class MD_MWER_Training(MWERTraining):
+    def compute_loss(self, asr_scores, LM_scores, hyp_cer):
+        
+        return 
+
+
 class MWEDTraining(MWERTraining):
     def compute_loss(self, asr_scores, LM_scores, hyp_cer):
         final_scores = asr_scores + LM_scores
@@ -211,6 +219,7 @@ class MWEDTraining(MWERTraining):
         )
 
         return batch_loss
+
 
 class MWER_MWEDInference(): 
     def __init__(self, config) -> None:

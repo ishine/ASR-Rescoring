@@ -108,14 +108,7 @@ def collate(data):
 class TokenlevelScoring():
     def __init__(self, config):
         self.config = config
-        '''
-        self.model = TokenBertLM(
-            load_model(
-                self.config.model,
-                self.config.model_weight_path
-            )
-        )
-        '''
+
         self.model = load_model(
                 self.config.model,
                 self.config.model_weight_path
