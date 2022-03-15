@@ -1,7 +1,7 @@
 exp_tag: "MWER training"
 
 actions:
-  - rescoring
+  - scoring
 
 # training actions
 train:

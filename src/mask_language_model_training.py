@@ -171,15 +171,13 @@ class PLLScoring():
         self.config = config
 
         print("Parsing json data ...")
-        parse_result = parse_json(
+        self.output_json = parse_json(
             file_path=config.asr_data_path,
             requirements=["all"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
         )
-
-        self.output_json = parse_result["all"]
         
         self.UttID_and_HypID_to_SeqID = {}
         seq_id = 0
