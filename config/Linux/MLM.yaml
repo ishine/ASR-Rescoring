@@ -22,8 +22,8 @@ scoring:
   device: "cuda:0"
   model: "bert-base-chinese"
   model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/checkpoint_1.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.lm.json"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm.json"
   n_best: 15
   max_utts: 999999
   batch_size: 300
