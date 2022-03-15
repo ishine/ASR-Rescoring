@@ -1,3 +1,5 @@
+import numpy as np
+from sqlalchemy import false
 import torch
 import torch.optim as optim
 from torch.nn.utils.rnn import pad_sequence
@@ -7,24 +9,40 @@ from tqdm import tqdm
 
 from models.sentence_bert_lm import SentenceBertLM
 from util.parse_json import parse_json
-from util.saving import model_saving, loss_saving
+from util.saving import model_saving, loss_saving, json_saving
 
-class MLMDistill():
+class MD_MWER_Training():
     def __init__(self, config):
         self.config = config
         
         print("Parsing json data ...")
-        self.train_hyp_text, self.train_hyp_lm_score = parse_json(
-            file_path=config.train_data_path,
-            requirements=["hyp_text", "hyp_score"],
+        self.train_hyp_text, self.train_hyp_am_score, self.train_hyp_cer = parse_json(
+            file_path=config.train_am_path,
+            requirements=["hyp_text", "hyp_score", "hyp_cer"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
         )
 
-        self.dev_hyp_text, self.dev_hyp_lm_score = parse_json(
-            file_path=config.dev_data_path,
-            requirements=["hyp_text", "hyp_score"],
+        self.train_hyp_lm_score = parse_json(
+            file_path=config.train_lm_path,
+            requirements=["hyp_score"],
+            max_utts=self.config.max_utts,
+            n_best=self.config.n_best,
+            flatten=False
+        )
+
+        self.dev_hyp_text, self.dev_hyp_am_score, self.dev_hyp_cer = parse_json(
+            file_path=config.dev_am_path,
+            requirements=["hyp_text", "hyp_score", "hyp_cer"],
+            max_utts=self.config.max_utts,
+            n_best=self.config.n_best,
+            flatten=False
+        )
+
+        self.dev_hyp_lm_score = parse_json(
+            file_path=config.dev_lm_path,
+            requirements=["hyp_score"],
             max_utts=self.config.max_utts,
             n_best=self.config.n_best,
             flatten=False
@@ -38,12 +56,16 @@ class MLMDistill():
         print("Preparing training dataset ...")
         self.train_dataset = self.prepare_dataset(
             self.train_hyp_text,
+            self.train_hyp_am_score,
             self.train_hyp_lm_score,
+            self.train_hyp_cer
         )
         print("Preparing developing dataset ...")
         self.dev_dataset = self.prepare_dataset(
             self.dev_hyp_text,
+            self.dev_hyp_am_score,
             self.dev_hyp_lm_score,
+            self.dev_hyp_cer
         )
     
         self.train_dataloader = self.prepare_dataloader(self.train_dataset)
@@ -56,7 +78,7 @@ class MLMDistill():
 
         self.train(self.train_dataloader, self.dev_dataloader)
 
-    def prepare_dataset(self, hyp_texts, hyp_lm_scores):
+    def prepare_dataset(self, hyp_texts, hyp_am_scores, hyp_lm_scores, hyp_cers):
        
         input_ids = []
         attention_masks = []
@@ -85,7 +107,7 @@ class MLMDistill():
                 input_ids.append(batch_ids)
                 attention_masks.append(batch_attention_masks)
 
-        dataset = self.MyDataset(input_ids, attention_masks, hyp_lm_scores)
+        dataset = self.MyDataset(input_ids, attention_masks, hyp_am_scores, hyp_lm_scores, hyp_cers)
         
         return dataset
 
@@ -99,8 +121,8 @@ class MLMDistill():
         return dataloader
 
     def collate(self, data):
-        input_ids_tensor_sets, attention_masks_tensor_sets,\
-            lm_scores_tensor_sets = zip(*data)
+        input_ids_tensor_sets, attention_masks_tensor_sets, asr_scores_tensor_sets,\
+            lm_scores_tensor_sets, hyp_cer_tensor_sets = zip(*data)
 
         batch = {}
 
@@ -114,7 +136,9 @@ class MLMDistill():
             batch["attention_masks"] += attention_masks_tensor_set
         batch["attention_masks"] = pad_sequence(batch["attention_masks"], batch_first=True)
         
+        batch["asr_scores"] = torch.stack(asr_scores_tensor_sets)
         batch["lm_scores"] = torch.stack(lm_scores_tensor_sets)
+        batch["hyp_cer"] = torch.stack(hyp_cer_tensor_sets)
 
         return batch
 
@@ -154,7 +178,9 @@ class MLMDistill():
         for _, batch in loop:
             input_ids = batch["input_ids"].to(self.config.device)
             attention_masks = batch["attention_masks"].to(self.config.device)
+            asr_scores = batch["asr_scores"].to(self.config.device)
             lm_scores = batch["lm_scores"].to(self.config.device)
+            hyp_cer = batch["hyp_cer"].to(self.config.device)
 
             with torch.set_grad_enabled(train_mode):
                 predicted_LM_scores = self.model(
@@ -167,14 +193,18 @@ class MLMDistill():
                     (int(len(predicted_LM_scores)/self.config.n_best), self.config.n_best)
                 )
 
+                batch_MWER_loss = self.compute_MWER_loss(asr_scores, predicted_LM_scores, hyp_cer)
+
                 bath_MD_loss = self.compute_MD_loss(predicted_LM_scores, lm_scores)
 
+                batch_loss = batch_MWER_loss + self.config.MD_loss_weight * bath_MD_loss
+
                 if train_mode:
-                    bath_MD_loss.backward()
+                    batch_loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
 
-            epoch_loss += bath_MD_loss.item()
+            epoch_loss += batch_loss.item()
 
         return epoch_loss / len(dataloader)
 
@@ -182,12 +212,26 @@ class MLMDistill():
         mse_loss_fn = torch.nn.MSELoss(reduction="sum")
         loss = mse_loss_fn(predicted_LM_scores, label_LM_scores)
         return loss
+    
+    def compute_MWER_loss(self, asr_scores, LM_scores, hyp_cer):
+        final_scores = asr_scores + LM_scores
+
+        probility = torch.softmax(-1*final_scores, dim=1)
+
+        average_cer = torch.sum(hyp_cer,dim=1) / self.config.n_best
+        average_cer = average_cer.unsqueeze(dim=1)
+
+        batch_loss = torch.sum(torch.mul(probility, (hyp_cer - average_cer)))
+
+        return batch_loss
 
     class MyDataset(Dataset):
-        def __init__(self, input_ids, attention_masks, lm_scores):
+        def __init__(self, input_ids, attention_masks, asr_scores, lm_scores, hyp_cers):
             self.input_ids = input_ids
             self.attention_masks = attention_masks
+            self.asr_scores = asr_scores
             self.lm_scores = lm_scores
+            self.hyp_cers = hyp_cers
 
         def __len__(self):
             return len(self.input_ids)
@@ -198,10 +242,21 @@ class MLMDistill():
             
             attention_masks_tensor = [torch.tensor(mask, dtype=torch.long) 
                 for mask in self.attention_masks[idx]]
-           
+
+            asr_scores_tensor = torch.tensor(
+                [asr_score for asr_score in self.asr_scores[idx]],
+                dtype=torch.float
+            )
+            
             lm_scores_tensor = torch.tensor(
                 [lm_score for lm_score in self.lm_scores[idx]],
                 dtype=torch.float
             )
 
-            return input_ids_tensor, attention_masks_tensor, lm_scores_tensor
+            hyp_cer_tensor = torch.tensor(
+                [hyp_cer for hyp_cer in self.hyp_cers[idx]],
+                dtype=torch.float
+            ) 
+
+            return input_ids_tensor, attention_masks_tensor, \
+                asr_scores_tensor, lm_scores_tensor, hyp_cer_tensor
