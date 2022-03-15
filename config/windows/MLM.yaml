@@ -1,16 +1,16 @@
 actions:
-  - scoring
+  - train
 
 # training actions
 train:
   type: "MLM"
   device: "cpu"
   model: "bert-base-chinese"
-  train_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\dev.am.json"
+  train_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
   dev_data_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
   output_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\domain_adaptation_training"
   n_best: 2
-  max_utts: 2
+  max_utts: 4
   max_seq_len: 50
   batch_size: 100
   epoch: 2
