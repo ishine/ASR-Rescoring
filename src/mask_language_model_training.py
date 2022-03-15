@@ -14,7 +14,7 @@ class MaskedLanguageModelTraining():
         self.config = config
         
         print("Parsing json data ...")
-        train_origin_data = parse_json(
+        self.train_ref_text = parse_json(
             file_path=config.train_data_path,
             requirements=["ref_text"],
             max_utts=self.config.max_utts,
@@ -22,7 +22,7 @@ class MaskedLanguageModelTraining():
             flatten=True
         )
 
-        dev_origin_data = parse_json(
+        self.dev_ref_text = parse_json(
             file_path=config.dev_data_path,
             requirements=["ref_text"],
             max_utts=self.config.max_utts,
@@ -36,9 +36,9 @@ class MaskedLanguageModelTraining():
         )
 
         print("Preparing training dataset ...")
-        self.train_dataset = self.prepare_dataset(train_origin_data)
+        self.train_dataset = self.prepare_dataset(self.train_ref_text)
         print("Preparing developing dataset ...")
-        self.dev_dataset = self.prepare_dataset(dev_origin_data)
+        self.dev_dataset = self.prepare_dataset(self.dev_ref_text)
     
         self.train_dataloader = self.prepare_dataloader(self.train_dataset)
         self.dev_dataloader = self.prepare_dataloader(self.dev_dataset)
@@ -48,9 +48,8 @@ class MaskedLanguageModelTraining():
 
         self.train()
 
-    def prepare_dataset(self, origin_data):
-        ref_texts = origin_data["ref_text"]
-
+    def prepare_dataset(self, ref_texts):
+    
         labels = []
         input_ids = []
 
