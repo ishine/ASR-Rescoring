@@ -199,8 +199,8 @@ class PLLScoring():
 
         print("loading model ...")
         self.model = BertForMaskedLM.from_pretrained(self.config.model)
-        checkpoint = torch.load(self.config.model_weight_path)
-        self.model.load_state_dict(checkpoint)
+        #checkpoint = torch.load(self.config.model_weight_path)
+        #self.model.load_state_dict(checkpoint)
         
         self.scoring()
 

@@ -1,5 +1,5 @@
 actions:
-  - scoring
+  - rescoring
 
 # training actions
 train:
@@ -21,9 +21,9 @@ scoring:
   type: "PLL"
   device: "cuda:0"
   model: "bert-base-chinese"
-  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/checkpoint_1.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm.json"
+  model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/checkpoint_8.pth"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.lm0.json"
   n_best: 15
   max_utts: 999999
   batch_size: 300
@@ -31,8 +31,8 @@ scoring:
 
 rescoring:
   dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm0.json"
   test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.lm.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.lm0.json"
   output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.am_lm.json"
   max_utts: 9999999
