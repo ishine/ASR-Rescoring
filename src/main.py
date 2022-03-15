@@ -72,10 +72,7 @@ if __name__ == "__main__":
         if config.scoring.type == "PLL":
             PLLScoring(config.scoring)
         elif config.scoring.type == "sentence_level":
-            scorer = SentencelevelScoring(config.scoring)
-            scorer.prepare_inference_set()
-            scorer.prepare_inference_loader()
-            scorer.score()
+            MDScoring(config.scoring)
         elif config.scoring.type == "MWER":
             scorer = MWER_MWED_Inference(config.scoring)
             dataset = scorer.prepare_dataset()
