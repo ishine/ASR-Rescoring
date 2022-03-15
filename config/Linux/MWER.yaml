@@ -1,7 +1,7 @@
 exp_tag: "MWER training"
 
 actions:
-  - scoring
+  - rescoring
 
 # training actions
 train:
@@ -30,9 +30,9 @@ scoring:
   batch_size: 300
 
 rescoring:
-  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
   dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
-  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
+  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
   test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.final.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/MWER2/test.am_lm.json"
   max_utts: 9999999

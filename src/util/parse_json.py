@@ -90,8 +90,8 @@ def parse_json(
         ]
         output["alignment"] = alignment
 
-    return output
-'''    if len(requirements) > 1:
+    #return output
+    if len(requirements) > 1:
         return [output[requirement] for requirement in requirements]
     else:
-        return output[requirements[0]]'''
+        return output[requirements[0]]

@@ -101,7 +101,7 @@ if __name__ == "__main__":
             config.rescoring.test_lm_data_path,
             requirements=["hyp_score"],
             max_utts=config.rescoring.max_utts)
-
+        
         final_score = rescorer.rescore(
             best_weight,
             test_ASR_score,

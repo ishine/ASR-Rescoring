@@ -196,11 +196,9 @@ class PLLScoring():
         )
         
         print("Preparing inference dataset ...")
-        print(self.UttID_and_HypID_to_SeqID)
         self.inference_dataset = self.prepare_dataset()
-        print(self.inference_dataset[0])
 
-        self.inference_dataloader = self.prepare_dataloader(self.inference_dataset)
+        self.inference_dataloader = self.prepare_dataloader()
 
         print("loading model ...")
         self.model = BertForMaskedLM.from_pretrained(self.config.model)
@@ -267,7 +265,7 @@ class PLLScoring():
         return batch
 
     def scoring(self):
-        self.scores = np.array([0.]*len(self.corpus_len))
+        self.scores = np.array([0.]*self.corpus_len)
 
         self.model = self.model.to(self.config.device)
         self.model.eval()
@@ -279,6 +277,14 @@ class PLLScoring():
             masked_token_pos = batch["masked_token_pos"]
             masked_token_ids = batch["masked_token_ids"]
             seq_id = batch["seq_id"]
+
+            '''            
+            print(input_ids)
+            print(attention_masks)
+            print(masked_token_pos)
+            print(masked_token_ids)
+            print(seq_id)
+            '''
             # 每個seq在這個batch中的位置，index從0開始，所以第一個seq的位置=0
             seq_pos_in_batch = list(range(len(input_ids)))
 
@@ -287,7 +293,7 @@ class PLLScoring():
                 output_logits = self.model(
                     input_ids = input_ids,
                     attention_mask = attention_masks
-                )[0]
+                ).logits
 
                 # 取出這個batch中每個seq個被mask的token的位置對應的output logits
                 output_logits = output_logits[seq_pos_in_batch, masked_token_pos,:]
