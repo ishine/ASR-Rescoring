@@ -3,9 +3,10 @@ import argparse
 import ruamel.yaml as yaml
 from jiwer import cer
 
-from mask_language_model_training import MaskedLanguageModelTraining, PLLScoring
+from mlm import MaskedLanguageModelTraining, PLLScoring
 from mlm_distillation import MLMDistill
-from mwer_training import MWERTraining, MWEDTraining, MWER_MWEDInference
+from mwer import MWER_Training, MWED_Training, MWER_MWED_Inference
+from md_mwer import MD_MWER_Training
 from error_detection_training import ErrorDetectionTraining
 from inference import SentencelevelScoring, TokenlevelScoring
 from rescorer import Rescorer
@@ -35,7 +36,7 @@ if __name__ == "__main__":
         elif config.train.type == "MLM_distillation":
             MLMDistill(config.train)
         elif config.train.type == "MWER":
-            MWER = MWERTraining(config.train)
+            MWER = MWER_Training(config.train)
             
             train_dataset = MWER.prepare_dataset(config.train.train_data_path)
             dev_dataset = MWER.prepare_dataset(config.train.dev_data_path)
@@ -44,6 +45,8 @@ if __name__ == "__main__":
             dev_dataloader = MWER.prepare_dataloader(dev_dataset)
             
             MWER.train(train_dataloader, dev_dataloader)
+        elif config.train.type == "MD_MWER":
+            MD_MWER_Training(config.train)
         elif config.train.type == "error_detection_training":
             ED = ErrorDetectionTraining(config.train)
             
@@ -55,7 +58,7 @@ if __name__ == "__main__":
 
             ED.train(train_dataloader, dev_dataloader)
         elif config.train.type == "MWED":
-            MWED = MWEDTraining(config.train)
+            MWED = MWED_Training(config.train)
             
             train_dataset = MWED.prepare_dataset(config.train.train_data_path)
             dev_dataset = MWED.prepare_dataset(config.train.dev_data_path)
@@ -74,7 +77,7 @@ if __name__ == "__main__":
             scorer.prepare_inference_loader()
             scorer.score()
         elif config.scoring.type == "MWER":
-            scorer = MWER_MWEDInference(config.scoring)
+            scorer = MWER_MWED_Inference(config.scoring)
             dataset = scorer.prepare_dataset()
             dataloader = scorer.prepare_dataloader(dataset)
             scorer.scoring(dataloader)

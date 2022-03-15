@@ -11,7 +11,7 @@ from util.saving import json_saving, loss_saving, model_saving
 from models.sentence_bert_lm import SentenceBertLM 
 
 
-class MWERTraining(): 
+class MWER_Training(): 
     def __init__(self, config) -> None:
         self.config = config
          
@@ -195,13 +195,7 @@ class MWERTraining():
             return input_ids_tensor, attention_masks_tensor, asr_scores_tensor, hyp_cer_tensor
 
 
-class MD_MWER_Training(MWERTraining):
-    def compute_loss(self, asr_scores, LM_scores, hyp_cer):
-        
-        return 
-
-
-class MWEDTraining(MWERTraining):
+class MWED_Training(MWER_Training):
     def compute_loss(self, asr_scores, LM_scores, hyp_cer):
         final_scores = asr_scores + LM_scores
 
@@ -221,7 +215,7 @@ class MWEDTraining(MWERTraining):
         return batch_loss
 
 
-class MWER_MWEDInference(): 
+class MWER_MWED_Inference(): 
     def __init__(self, config) -> None:
         self.config = config
         
