@@ -199,8 +199,8 @@ class PLLScoring():
 
         print("loading model ...")
         self.model = BertForMaskedLM.from_pretrained(self.config.model)
-        #checkpoint = torch.load(self.config.model_weight_path)
-        #self.model.load_state_dict(checkpoint)
+        checkpoint = torch.load(self.config.model_weight_path)
+        self.model.load_state_dict(checkpoint)
         
         self.scoring()
 
@@ -275,13 +275,6 @@ class PLLScoring():
             masked_token_ids = batch["masked_token_ids"]
             seq_id = batch["seq_id"]
 
-            '''            
-            print(input_ids)
-            print(attention_masks)
-            print(masked_token_pos)
-            print(masked_token_ids)
-            print(seq_id)
-            '''
             # 每個seq在這個batch中的位置，index從0開始，所以第一個seq的位置=0
             seq_pos_in_batch = list(range(len(input_ids)))
 

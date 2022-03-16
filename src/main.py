@@ -4,15 +4,16 @@ import ruamel.yaml as yaml
 from jiwer import cer
 
 from mlm import MaskedLanguageModelTraining, PLLScoring
-from mlm_distillation import MLMDistill
+from mlm_distillation import MLMDistill, MDScoring
 from mwer import MWER_Training, MWED_Training, MWER_MWED_Inference
 from md_mwer import MD_MWER_Training
+
 from error_detection_training import ErrorDetectionTraining
-from inference import SentencelevelScoring, TokenlevelScoring
+
 from rescorer import Rescorer
+
 from util.config import parse_config
 from util.parse_json import parse_json
-from error_detection_training import ErrorDetectionInference
 
 if __name__ == "__main__":
 
@@ -71,7 +72,7 @@ if __name__ == "__main__":
     if "scoring" in config.actions:
         if config.scoring.type == "PLL":
             PLLScoring(config.scoring)
-        elif config.scoring.type == "sentence_level":
+        elif config.scoring.type == "MLM_distillation":
             MDScoring(config.scoring)
         elif config.scoring.type == "MWER":
             scorer = MWER_MWED_Inference(config.scoring)
