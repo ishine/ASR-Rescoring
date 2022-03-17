@@ -4,7 +4,7 @@ import ruamel.yaml as yaml
 from jiwer import cer
 
 from mlm import MaskedLanguageModelTraining, PLLScoring
-from mlm_distillation import MLMDistill
+from mlm_distillation import MLMDistill, MDScoring
 from mwer import MWER_Training, MWED_Training, MWER_MWED_Inference
 from md_mwer import MD_MWER_Training
 from error_detection_training import ErrorDetectionTraining

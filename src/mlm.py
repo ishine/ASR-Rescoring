@@ -199,8 +199,8 @@ class PLLScoring():
 
         print("loading model ...")
         self.model = BertForMaskedLM.from_pretrained(self.config.model)
-        #checkpoint = torch.load(self.config.model_weight_path)
-        #self.model.load_state_dict(checkpoint)
+        checkpoint = torch.load(self.config.model_weight_path)
+        self.model.load_state_dict(checkpoint)
         
         self.scoring()
 
@@ -212,7 +212,7 @@ class PLLScoring():
         seq_id = []
 
         # 把每個seq複製和它長度一樣的次數
-        for utt_id, utt_content in self.output_json.items():
+        for utt_id, utt_content in tqdm(self.output_json.items(), total=len(self.output_json.items())):
             for hyp_id, hyp_content in utt_content["hyp"].items():
 
                 token_seq = self.tokenizer.tokenize(hyp_content["text"])

@@ -167,14 +167,14 @@ class MLMDistill():
                     (int(len(predicted_LM_scores)/self.config.n_best), self.config.n_best)
                 )
 
-                bath_MD_loss = self.compute_MD_loss(predicted_LM_scores, lm_scores)
+                batch_MD_loss = self.compute_MD_loss(predicted_LM_scores, lm_scores)
 
                 if train_mode:
-                    bath_MD_loss.backward()
+                    batch_MD_loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
 
-            epoch_loss += bath_MD_loss.item()
+            epoch_loss += batch_MD_loss.item()
 
         return epoch_loss / len(dataloader)
 
@@ -219,25 +219,31 @@ class MDScoring():
             flatten=False
         )
 
+        self.UttID_and_HypID_to_SeqID = {}
+        seq_id = 0
+        for utt_id, utt_content in self.output_json.items():
+            for hyp_id, _ in utt_content["hyp"].items():
+                self.UttID_and_HypID_to_SeqID[(utt_id, hyp_id)] = seq_id
+                seq_id += 1
+        
+        self.corpus_len = seq_id
+        
         print("loading tokenizer ...")
         self.tokenizer = BertTokenizer.from_pretrained(
             pretrained_model_name_or_path=self.config.model
         )
 
         print("Preparing training dataset ...")
-        self.train_dataset = self.prepare_dataset(
-            self.train_hyp_text,
-            self.train_hyp_lm_score,
-        )
-    
-        self.train_dataloader = self.prepare_dataloader(self.train_dataset)
+        self.inference_dataset = self.prepare_dataset()
+
+        self.inference_dataloader = self.prepare_dataloader()
 
         print("loading model ...")
         self.model = SentenceBertLM(
             bert=BertModel.from_pretrained(self.config.model)
         )
 
-        self.scoring(self.train_dataloader, self.dev_dataloader)
+        self.scoring(self.inference_dataloader)
 
     def prepare_dataset(self, hyp_texts, hyp_lm_scores):
        
@@ -249,14 +255,11 @@ class MDScoring():
             batch_attention_masks = []
             
             for hyp in hyps:
-                word_pieces = self.tokenizer.tokenize(hyp)
-
-                if len(word_pieces) > self.config.max_seq_len:
-                    break
+                token_seq = self.tokenizer.tokenize(hyp)
                 
                 batch_ids.append(
                     self.tokenizer.convert_tokens_to_ids(
-                        ["[CLS]"] + word_pieces + ["[SEP]"]
+                        ["[CLS]"] + token_seq + ["[SEP]"]
                     )
                 )
 
