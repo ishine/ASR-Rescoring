@@ -74,6 +74,11 @@ class MD_MWER_Training():
         self.model = SentenceBertLM(
             bert=BertModel.from_pretrained(self.config.model)
         )
+        if self.config.model_weight_path != None:
+            print("loading pretrained MD model ...")
+            checkpoint = torch.load(self.config.model_weight_path)
+            self.model.load_state_dict(checkpoint)
+
 
         self.train(self.train_dataloader, self.dev_dataloader)
 
@@ -220,9 +225,9 @@ class MD_MWER_Training():
         average_cer = torch.sum(hyp_cer,dim=1) / self.config.n_best
         average_cer = average_cer.unsqueeze(dim=1)
 
-        batch_loss = torch.sum(torch.mul(probility, (hyp_cer - average_cer)))
+        loss = torch.sum(torch.mul(probility, (hyp_cer - average_cer)))
 
-        return batch_loss
+        return loss
 
     class MyDataset(Dataset):
         def __init__(self, input_ids, attention_masks, asr_scores, lm_scores, hyp_cers):
@@ -259,3 +264,67 @@ class MD_MWER_Training():
 
             return input_ids_tensor, attention_masks_tensor, \
                 asr_scores_tensor, lm_scores_tensor, hyp_cer_tensor
+
+class MD_MWED_training(MD_MWER_Training):
+    def run_one_epoch(self, dataloader, train_mode: bool):
+        self.model = self.model.to(self.config.device)
+
+        if train_mode:
+            self.model.train()
+            optimizer = optim.AdamW(self.model.parameters(), lr=1e-5)
+            optimizer.zero_grad()
+        else:
+            self.model.eval()
+
+        epoch_loss = 0
+        loop = tqdm(enumerate(dataloader), total=len(dataloader))
+        for _, batch in loop:
+            input_ids = batch["input_ids"].to(self.config.device)
+            attention_masks = batch["attention_masks"].to(self.config.device)
+            asr_scores = batch["asr_scores"].to(self.config.device)
+            lm_scores = batch["lm_scores"].to(self.config.device)
+            hyp_cer = batch["hyp_cer"].to(self.config.device)
+
+            with torch.set_grad_enabled(train_mode):
+                predicted_LM_scores = self.model(
+                    input_ids=input_ids,
+                    attention_mask=attention_masks
+                ).squeeze(dim=1)
+
+                predicted_LM_scores = torch.reshape(
+                    predicted_LM_scores,
+                    (int(len(predicted_LM_scores)/self.config.n_best), self.config.n_best)
+                )
+
+                batch_MWED_loss = self.compute_MWED_loss(asr_scores, predicted_LM_scores, hyp_cer)
+
+                bath_MD_loss = self.compute_MD_loss(predicted_LM_scores, lm_scores)
+
+                batch_loss = batch_MWED_loss + self.config.MD_loss_weight * bath_MD_loss
+
+                if train_mode:
+                    batch_loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+            epoch_loss += batch_loss.item()
+
+        return epoch_loss / len(dataloader)
+        
+    def compute_MWED_loss(self, asr_scores, LM_scores, hyp_cer):
+        final_scores = asr_scores + LM_scores
+
+        error_distribution = torch.softmax(hyp_cer, dim=1)
+
+        temperature = torch.sum(final_scores,dim=1) / torch.sum(hyp_cer,dim=1)
+        temperature = temperature.unsqueeze(dim=1)
+
+        score_distribution = torch.softmax(final_scores/temperature, dim=1)
+
+        loss = torch.nn.functional.kl_div(
+            torch.log(score_distribution),
+            error_distribution,
+            reduction="sum"
+        )
+
+        return loss

@@ -1,3 +1,4 @@
+from random import shuffle
 import numpy as np
 import torch
 import torch.optim as optim
@@ -13,6 +14,10 @@ class MaskedLanguageModelTraining():
     def __init__(self, config):
         self.config = config
         
+        if self.config.seed != None:
+            torch.manual_seed(self.config.seed)
+            torch.cuda.manual_seed(self.config.seed)
+
         print("Parsing json data ...")
         self.train_ref_text = parse_json(
             file_path=config.train_data_path,
@@ -36,7 +41,7 @@ class MaskedLanguageModelTraining():
         )
 
         print("Preparing training dataset ...")
-        self.train_dataset = self.prepare_dataset(self.train_ref_text)
+        self.train_dataset = self.prepare_dataset(self.train_ref_text, for_train=True)
         print("Preparing developing dataset ...")
         self.dev_dataset = self.prepare_dataset(self.dev_ref_text)
     
@@ -78,12 +83,18 @@ class MaskedLanguageModelTraining():
         dataset = self.MyDataset(input_ids, labels, attention_masks)
         return dataset
     
-    def prepare_dataloader(self, dataset):
+    def prepare_dataloader(self, dataset, for_train:bool):
+        if for_train:
+            shuffle=self.config.shuffle
+        else:
+            shuffle=False
+
         dataloader = DataLoader(
             dataset=dataset,
             collate_fn=self.collate,
             batch_size=self.config.batch_size,
-            num_workers=self.config.num_worker
+            num_workers=self.config.num_worker,
+            shuffle=shuffle
         )
         return dataloader
     
@@ -244,7 +255,7 @@ class PLLScoring():
             dataset=self.inference_dataset,
             collate_fn=self.collate,
             batch_size=self.config.batch_size,
-            num_workers=self.config.num_worker
+            num_workers=self.config.num_worker,
         )
         return dataloader
 

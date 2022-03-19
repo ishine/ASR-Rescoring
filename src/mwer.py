@@ -93,7 +93,7 @@ class MWER_Training():
         self.model = SentenceBertLM(
             bert=BertModel.from_pretrained(self.config.model)
         )
-
+        
         train_loss_record = [0]*self.config.epoch
         dev_loss_record = [0]*self.config.epoch
 

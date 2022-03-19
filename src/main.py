@@ -6,7 +6,7 @@ from jiwer import cer
 from mlm import MaskedLanguageModelTraining, PLLScoring
 from mlm_distillation import MLMDistill, MDScoring
 from mwer import MWER_Training, MWED_Training, MWER_MWED_Inference
-from md_mwer import MD_MWER_Training
+from md_mwer import MD_MWER_Training, MD_MWED_training
 
 from error_detection_training import ErrorDetectionTraining
 
@@ -48,6 +48,8 @@ if __name__ == "__main__":
             MWER.train(train_dataloader, dev_dataloader)
         elif config.train.type == "MD_MWER":
             MD_MWER_Training(config.train)
+        elif config.train.type == "MD_MWED":
+            MD_MWED_training(config.train)
         elif config.train.type == "error_detection_training":
             ED = ErrorDetectionTraining(config.train)
             
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     if "scoring" in config.actions:
         if config.scoring.type == "PLL":
             PLLScoring(config.scoring)
-        elif config.scoring.type == "MLM_distillation":
+        elif config.scoring.type == "MLM_distillation" or config.scoring.type=="MD_MWER":
             MDScoring(config.scoring)
         elif config.scoring.type == "MWER":
             scorer = MWER_MWED_Inference(config.scoring)

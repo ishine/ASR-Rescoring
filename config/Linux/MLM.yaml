@@ -1,5 +1,5 @@
 actions:
-  - rescoring
+  - train
 
 # training actions
 train:
@@ -8,13 +8,15 @@ train:
   model: "bert-base-chinese"
   train_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
   dev_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training_shuffle"
+  seed: 10
+  shuffle: True
   n_best: 15
   max_utts: 999999
   max_seq_len: 50
-  batch_size: 100
-  epoch: 3
-  num_worker: 3
+  batch_size: 150
+  epoch: 10
+  num_worker: 5
 
 # inference actions
 scoring:
@@ -22,17 +24,16 @@ scoring:
   device: "cuda:0"
   model: "bert-base-chinese"
   model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/checkpoint_1.pth"
-  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/train.lm.json"
+  asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm.json"
   n_best: 15
   max_utts: 999999
-  batch_size: 100
-  num_worker: 3 
+  batch_size: 400
+  num_worker: 5
 
 rescoring:
-  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
-  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/train.lm.json"
-  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
-  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/train.lm.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.am_lm.json"
+  dev_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  dev_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/dev.lm.json"
+  test_asr_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  test_lm_data_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/domain_adaptation_training/test.lm.json"
   max_utts: 9999999
