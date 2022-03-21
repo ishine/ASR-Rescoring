@@ -321,7 +321,6 @@ class MDScoring():
 
         json_saving(self.config.output_path, self.output_json)
 
-
     class MyDataset(Dataset):
         def __init__(self, input_ids, attention_masks, seq_id):
             self.input_ids = input_ids
