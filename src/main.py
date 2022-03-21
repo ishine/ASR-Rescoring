@@ -74,7 +74,9 @@ if __name__ == "__main__":
     if "scoring" in config.actions:
         if config.scoring.type == "PLL":
             PLLScoring(config.scoring)
-        elif config.scoring.type == "MLM_distillation" or config.scoring.type=="MD_MWER":
+        elif config.scoring.type == "MLM_distillation" or \
+            config.scoring.type=="MD_MWER" or \
+            config.scoring.type=="MD_MWED":
             MDScoring(config.scoring)
         elif config.scoring.type == "MWER":
             scorer = MWER_MWED_Inference(config.scoring)
