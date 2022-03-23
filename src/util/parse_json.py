@@ -13,7 +13,8 @@ def parse_json(
     requirements: List[str],
     max_utts: int = -1, 
     n_best: int = -1,
-    flatten: bool = False):
+    flatten: bool = False, 
+    with_id: bool = False):
     """
     Parse a specify number of utterance in the json file 
     and return the required components in each utterance.
@@ -22,7 +23,7 @@ def parse_json(
         file_path: The path of the json file you want to parse.
         requirements: The item you want to get from the json file.
             requirements can be "all", "ref_text", "hyp_text", "hyp_score"
-            , "hyp_cer" or "alignment" 
+            , "hyp_cer" or "alignment"
         max_utts: How many utterances you want to parse.
             -1 means parse all utterances.
         n_best: How many hypothesis in an utterance you want to parse.
@@ -50,22 +51,23 @@ def parse_json(
                 if  index < n_best or n_best == -1
             }
 
-    json_data = json_data.values()
+    #json_data = json_data.values()
 
     if "ref_text" in requirements:
-        ref_text = [utt["ref"] 
-                    for utt_count, utt in enumerate(json_data, 1)
+        ref_text = [(utt_id, utt["ref"]) if with_id else utt["ref"]
+                    for utt_count, (utt_id, utt) in enumerate(json_data.items(), 1)
                     if utt_count <= max_utts or max_utts == -1]
         output["ref_text"] = ref_text
 
-    all_hyps = [utt["hyp"]
-                for utt_count, utt in enumerate(json_data, 1)
+    all_hyps = [(utt_id, utt["hyp"]) if with_id else utt["hyp"]
+                for utt_count, (utt_id, utt) in enumerate(json_data.items(), 1)
                 if utt_count <= max_utts or max_utts == -1]
-    
+
     if "hyp_text" in requirements:
         hyp_text = [
-            [hyp["text"] for index, hyp in enumerate(utt_hyps.values()) if index < n_best or n_best == -1]
-            for utt_hyps in all_hyps
+            [(utt_id, hyp_id, hyp["text"]) if with_id else hyp["text"] 
+            for index, (hyp_id, hyp) in enumerate(utt_hyps.items()) if index < n_best or n_best == -1]
+            for (utt_id, utt_hyps) in all_hyps
         ]
         output["hyp_text"] = flatten_2dlist(hyp_text) if flatten else hyp_text
 

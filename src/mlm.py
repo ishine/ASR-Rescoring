@@ -41,11 +41,11 @@ class MaskedLanguageModelTraining():
         )
 
         print("Preparing training dataset ...")
-        self.train_dataset = self.prepare_dataset(self.train_ref_text, for_train=True)
+        self.train_dataset = self.prepare_dataset(self.train_ref_text)
         print("Preparing developing dataset ...")
         self.dev_dataset = self.prepare_dataset(self.dev_ref_text)
     
-        self.train_dataloader = self.prepare_dataloader(self.train_dataset)
+        self.train_dataloader = self.prepare_dataloader(self.train_dataset, for_train=True)
         self.dev_dataloader = self.prepare_dataloader(self.dev_dataset)
 
         print("loading model ...")

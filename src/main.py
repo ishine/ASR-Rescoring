@@ -10,6 +10,8 @@ from md_mwer import MD_MWER_Training, MD_MWED_training
 
 from error_detection_training import ErrorDetectionTraining
 
+from semantic.semantic import semantic
+
 from rescorer import Rescorer
 
 from util.config import parse_config
@@ -70,6 +72,9 @@ if __name__ == "__main__":
             dev_dataloader = MWED.prepare_dataloader(dev_dataset)
             
             MWED.train(train_dataloader, dev_dataloader)
+        elif config.train.type == "asr_semantic":
+            semantic(config.train)
+
     # do inference
     if "scoring" in config.actions:
         if config.scoring.type == "PLL":

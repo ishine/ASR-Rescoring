@@ -158,8 +158,6 @@ class ErrorDetectionTraining():
     
     def compute_loss(self, output, label):
         # alpha is used to balance different type of loss
-        #alpha = 8
-
         same_tokens_output = 1 - output[label==0]
         diff_token_output = output[label==1]
 
