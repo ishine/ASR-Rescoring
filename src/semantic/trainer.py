@@ -120,7 +120,6 @@ class BERTsemTrainer(BaseTrainer):
 
                 hyp_i = utt.hyps.pop(0)
                 for hyp_j in utt.hyps:
-                    print(hyp_i.id, hyp_j.id)
                     if hyp_i.cer == hyp_j.cer:
                         continue
 
@@ -196,8 +195,6 @@ class BERTsemTrainer(BaseTrainer):
         return epoch_loss / len(dataloader)
     
     def compute_loss(self, predictions, labels):
-        print(predictions)
-        print(labels)
         BCE_loss_fn = torch.nn.BCELoss(reduction='mean')
         loss = BCE_loss_fn(predictions, labels)
         return loss
