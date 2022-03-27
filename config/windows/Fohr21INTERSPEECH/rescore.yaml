@@ -1,6 +1,15 @@
 action: rescore
 
 setting:
-  asr_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
-  lm_data_file:
-  sem_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+  use_score: 
+    - am
+    - sem
+
+  dev: 
+    am_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+    lm_data_file:
+    sem_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+  test:
+    am_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+    lm_data_file:
+    sem_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"

@@ -71,8 +71,7 @@ class Utterance():
         self.hyps.append(hyp)
 
     def set_index(self, index: int):
-        self.index = index
-
+        self.index = index        
 
 class Data():
     def __init__(self, n_best) -> None:
@@ -117,3 +116,9 @@ class Data():
             }
 
         return json_format_data
+
+    def get_scores(self):
+        scores = []
+        for utt in self.utt_set:
+            scores.append([hyp.score for hyp in utt.hyps])
+        return scores

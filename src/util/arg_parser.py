@@ -19,4 +19,4 @@ class ArgParser():
         config = yaml.load(open(args.config, "r"), Loader=yaml.Loader)
         config = parse_config(config)
 
-        return config.action, config.method, config.setting
+        return config
