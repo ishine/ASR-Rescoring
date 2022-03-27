@@ -6,27 +6,37 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer
 from tqdm import tqdm
 
-from model import BERTsem, BERTalsem
+from models.Fohr21INTERSPEECH import BERTsem, BERTalsem 
 from util.dataparser import DataParser
-from util.saving import json_saving, loss_saving, model_saving
+from util.saving import loss_saving, model_saving
 
 
 class BaseTrainer(metaclass=abc.ABCMeta):
     def __init__(self, config) -> None:
+
+        print("Setting trainer ...")
+
+        self.seed = config.seed
+        self.device = config.device
         
-        print("setting trainer ...")
+        self.train_data_file = config.train_data_file
+        self.dev_data_file = config.dev_data_file
+        self.output_path = config.output_path
 
-        self.config = config
+        self.preprocess_config = config.preprocess
+        self.model_config = config.model
+        self.dataloader_config = config.dataloader
+        self.opt_config = config.opt
 
-        if self.config.seed != None:
-            torch.manual_seed(self.config.seed)
-            torch.cuda.manual_seed(self.config.seed)
+        if self.seed != None:
+            torch.manual_seed(self.seed)
+            torch.cuda.manual_seed(self.seed)
     
     def parse_data(self, data_path):
         data_parser = DataParser(
             json_file_path=data_path,
-            max_utts=self.config.max_utts,
-            n_best=self.config.n_best
+            max_utts=self.preprocess_config.max_utts,
+            n_best=self.preprocess_config.n_best
         )
         data = data_parser.parse()
         
@@ -38,15 +48,15 @@ class BaseTrainer(metaclass=abc.ABCMeta):
 
     def prepare_dataloader(self, dataset, for_train:bool):
         if for_train:
-            shuffle=self.config.shuffle
+            shuffle=self.dataloader_config.shuffle
         else:
             shuffle=False
 
         dataloader = DataLoader(
             dataset=dataset,
             collate_fn=self.collate,
-            batch_size=self.config.batch_size,
-            num_workers=self.config.num_worker,
+            batch_size=self.dataloader_config.batch_size,
+            num_workers=self.dataloader_config.num_worker,
             shuffle=shuffle
         )
         return dataloader
@@ -62,33 +72,33 @@ class BaseTrainer(metaclass=abc.ABCMeta):
     def train(self):
 
         print("Parsing train data ...")
-        self.train_data = self.parse_data(self.config.train_data_path)
+        self.train_data = self.parse_data(self.train_data_file)
 
         print("Parsing dev data ...")
-        self.dev_data = self.parse_data(self.config.dev_data_path)
+        self.dev_data = self.parse_data(self.dev_data_file)
         
         print("Loading tokenizer ...")
         self.tokenizer = BertTokenizer.from_pretrained(
-            pretrained_model_name_or_path=self.config.bert
+            pretrained_model_name_or_path=self.model_config.bert
         )
 
         print("Preparing train dataset and dataloader ...")
-        self.train_dataset = self.prepare_dataset(self.train_data)
+        self.train_dataset = self.prepare_dataset(self.train_data.utt_set)
         self.train_dataloader = self.prepare_dataloader(self.train_dataset, for_train=True)
 
         print("Preparing dev dataset and dataloader ...")
-        self.dev_dataset = self.prepare_dataset(self.dev_data)
+        self.dev_dataset = self.prepare_dataset(self.dev_data.utt_set)
         self.dev_dataloader = self.prepare_dataloader(self.dev_dataset, for_train=False)
 
         print("Loading model ...")
         self.model = self.load_model()
 
         print("Start training ...")
-        train_loss_record = [None]*self.config.epoch
-        dev_loss_record = [None]*self.config.epoch
+        train_loss_record = [None]*self.opt_config.epoch
+        dev_loss_record = [None]*self.opt_config.epoch
 
-        for epoch_id in range(1, self.config.epoch+1):
-            print("Epoch {}/{}".format(epoch_id, self.config.epoch))
+        for epoch_id in range(1, self.opt_config.epoch+1):
+            print("Epoch {}/{}".format(epoch_id, self.opt_config.epoch))
             
             train_loss_record[epoch_id-1] = self.run_one_epoch(self.train_dataloader, train_mode=True)
             print("Epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
@@ -96,10 +106,10 @@ class BaseTrainer(metaclass=abc.ABCMeta):
             dev_loss_record[epoch_id-1] = self.run_one_epoch(self.dev_dataloader, train_mode=False)
             print("Epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
 
-            model_saving(self.config.output_path, self.model.state_dict(), epoch_id)
+            model_saving(self.output_path, self.model.state_dict(), epoch_id)
         
             loss_saving(
-                self.config.output_path,
+                self.output_path,
                 {"train": train_loss_record, "dev": dev_loss_record}
             )
         
@@ -125,7 +135,7 @@ class BERTsemTrainer(BaseTrainer):
 
                     hyp_i_token_seq = self.tokenizer.tokenize(hyp_i.text)
                     hyp_j_token_seq = self.tokenizer.tokenize(hyp_j.text)
-                    if len(hyp_i_token_seq + hyp_j_token_seq) > self.config.max_seq_len:
+                    if len(hyp_i_token_seq + hyp_j_token_seq) > self.preprocess_config.max_seq_len:
                         continue
 
                     input_ids.append(
@@ -157,15 +167,15 @@ class BERTsemTrainer(BaseTrainer):
         return input_ids_tensor, token_type_ids_tensor, attention_masks_tensor, labels_tensor
     
     def load_model(self):
-        self.model = BERTsem(self.config)
+        self.model = BERTsem(self.model_config)
         return self.model
     
     def run_one_epoch(self, dataloader, train_mode: bool):
-        self.model = self.model.to(self.config.device)
+        self.model = self.model.to(self.device)
         
         if train_mode:
             self.model.train()
-            optimizer = optim.AdamW(self.model.parameters(), lr=self.config.lr)
+            optimizer = optim.AdamW(self.model.parameters(), lr=self.opt_config.lr)
             optimizer.zero_grad()
         else:
             self.model.eval()
@@ -173,10 +183,10 @@ class BERTsemTrainer(BaseTrainer):
         epoch_loss = 0
         loop = tqdm(enumerate(dataloader), total=len(dataloader))
         for _, (input_ids, token_type_ids, attention_masks, labels) in loop:
-            input_ids = input_ids.to(self.config.device)
-            token_type_ids = token_type_ids.to(self.config.device)
-            attention_masks = attention_masks.to(self.config.device)
-            labels = labels.to(self.config.device)
+            input_ids = input_ids.to(self.device)
+            token_type_ids = token_type_ids.to(self.device)
+            attention_masks = attention_masks.to(self.device)
+            labels = labels.to(self.device)
 
             with torch.set_grad_enabled(train_mode):
                 output = self.model(

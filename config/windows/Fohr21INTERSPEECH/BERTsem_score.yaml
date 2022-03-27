@@ -1,0 +1,22 @@
+action: score
+
+method: "bertsem"
+
+setting:
+  seed: 10
+  device: "cpu"
+  asr_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+  model_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\sem\\checkpoint_1.pth"
+  output_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+
+  preprocess:
+    n_best: 2
+    max_utts: 3
+    max_seq_len: 100
+
+  model:
+    bert: "bert-base-chinese"
+
+  dataloader:
+    batch_size: 100
+    num_worker: 1

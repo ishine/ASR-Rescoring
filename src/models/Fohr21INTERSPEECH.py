@@ -3,8 +3,10 @@ from transformers import BertModel
 
 class BERTsem(torch.nn.Module):
     def __init__(self, config):
-        super(BERTsem, self).__init__()
-        self.bert = BertModel.from_pretrained(config.bert)
+        super().__init__()
+        self.bert = BertModel.from_pretrained(
+            pretrained_model_name_or_path=config.bert
+        )
         self.linear = torch.nn.Linear(in_features=self.bert.config.hidden_size, out_features=1)
         self.sigmoid = torch.nn.Sigmoid()
 
@@ -24,7 +26,7 @@ class BERTsem(torch.nn.Module):
 
 class BERTalsem(torch.nn.Module):
     def __init__(self, config):
-        super(BERTalsem, self).__init__()
+        super().__init__()
         self.drop_layer = torch.nn.Dropout(p=0.3)
         self.bert = BertModel.from_pretrained(config.bert)
         self.BiLSTM = torch.nn.LSTM(

@@ -1,0 +1,30 @@
+action: train
+
+method: "bertsem"
+
+setting:
+  seed: 10
+  device: "cpu"
+  train_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+  dev_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+  output_path: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\sem"
+
+  preprocess:
+    n_best: 3
+    max_utts: 5
+    max_seq_len: 100
+
+  model:
+    bert: "bert-base-chinese"
+    attention_probs_dropout: 0.3
+    hidden_dropout: 0.3
+
+  dataloader:
+    shuffle: True
+    batch_size: 100
+    num_worker: 5
+
+  opt:
+    lr: 0.00001
+    epoch: 2
+  
