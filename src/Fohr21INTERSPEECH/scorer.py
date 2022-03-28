@@ -141,7 +141,7 @@ class BERTsemScorer(BaseScorer):
         return self.model
     
     def run_one_epoch(self, dataloader):
-        scores = torch.zeros(self.inference_data.num_utt * self.inference_data.n_best)
+        scores = torch.zeros(self.inference_data.num_utt * self.inference_data.n_best).to(self.device)
 
         self.model = self.model.to(self.device)
         self.model.eval()
@@ -150,7 +150,8 @@ class BERTsemScorer(BaseScorer):
             input_ids = input_ids.to(self.device)
             token_type_ids = token_type_ids.to(self.device)
             attention_masks = attention_masks.to(self.device)
-
+            score_save_pos = score_save_pos.to(self.device)
+            
             with torch.set_grad_enabled(False):
                 output = self.model(
                     input_ids=input_ids,

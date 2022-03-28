@@ -1,0 +1,30 @@
+action: rescore
+
+setting:
+  use_score: 
+    - am
+    - sem
+
+  input_files:
+    am:
+      dev: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+      test: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+    lm:
+      dev: 
+      test: 
+    sem:
+      dev: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/sem/dev.sem.json"
+      test: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/sem/test.sem.json"
+
+  parameter_range:
+    am: 
+      start: 1
+      end: 1
+    lm:
+      start: 8
+      end: 10
+    sem:
+      start: 80
+      end: 100
+
+

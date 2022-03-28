@@ -1,6 +1,6 @@
 import sys
-#sys.path.append("/home/chkuo/chkuo/experiment/ASR-Rescoring/src")
-sys.path.append("D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\src")
+sys.path.append("/home/chkuo/chkuo/experiment/ASR-Rescoring/src")
+#sys.path.append("D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\src")
 from util.arg_parser import ArgParser 
 from trainer import BERTsemTrainer, BERTalsemTrainer
 from scorer import BERTsemScorer

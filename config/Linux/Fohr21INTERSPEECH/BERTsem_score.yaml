@@ -1,0 +1,22 @@
+action: score
+
+method: "bertsem"
+
+setting:
+  seed: 10
+  device: "cuda:0"
+  asr_data_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+  model_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/sem/checkpoint_3.pth"
+  output_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/sem/dev.sem.json"
+
+  preprocess:
+    n_best: 15
+    max_utts: 999999
+    max_seq_len: 100
+
+  model:
+    bert: "bert-base-chinese"
+
+  dataloader:
+    batch_size: 100
+    num_worker: 5
