@@ -30,10 +30,10 @@ class BERTalsem(torch.nn.Module):
         self.drop_layer = torch.nn.Dropout(p=0.3)
         self.bert = BertModel.from_pretrained(config.bert)
         self.BiLSTM = torch.nn.LSTM(
-            input_size=768,
-            hidden_size=64,
+            input_size=,
+            hidden_size=config.lstm_hidden,
             num_layers=1,
-            dropout=0.3,
+            dropout=config.dropout,
             bidirectional=True
         )
         self.first_FC = torch.nn.Linear(in_features=256, out_features=128)
