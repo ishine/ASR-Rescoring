@@ -1,11 +1,13 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
 
+# 第一個sequence有兩個token
 input_seq1 = torch.tensor(
     [[ 1,  2,  3, 3],
      [ 4,  5,  6, 6]],
     dtype=torch.float)
 
+# 第二個sequence有兩個token
 input_seq2 = torch.tensor(
     [[11, 12, 13, 13],
      [14, 15, 16, 16],

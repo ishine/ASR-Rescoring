@@ -18,6 +18,7 @@ setting:
   model:
     bert: "bert-base-chinese"
     dropout: 0.3
+    lstm_hidden_size: 64
 
   dataloader:
     shuffle: True

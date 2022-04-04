@@ -1,5 +1,7 @@
 import torch
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from transformers import BertModel
+
 
 class BERTsem(torch.nn.Module):
     def __init__(self, config):
@@ -28,15 +30,22 @@ class BERTalsem(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
         self.drop_layer = torch.nn.Dropout(p=0.3)
-        self.bert = BertModel.from_pretrained(config.bert)
+        self.bert = BertModel.from_pretrained(
+            config.bert,
+            attention_probs_dropout_prob=0.3,
+            hidden_dropout_prob=0.3
+        )
         self.BiLSTM = torch.nn.LSTM(
-            input_size=,
-            hidden_size=config.lstm_hidden,
+            input_size=self.bert.config.hidden_size,
+            hidden_size=config.lstm_hidden_size,
             num_layers=1,
             dropout=config.dropout,
             bidirectional=True
         )
-        self.first_FC = torch.nn.Linear(in_features=256, out_features=128)
+        self.first_FC = torch.nn.Linear(
+            in_features=4*config.lstm_hidden_size,
+            out_features=2*config.lstm_hidden_size
+        )
         self.relu = torch.nn.ReLU()
         self.second_FC = torch.nn.Linear(in_features=132, out_features=1)
         self.sigmoid = torch.nn.Sigmoid()
@@ -49,4 +58,41 @@ class BERTalsem(torch.nn.Module):
             return_dict =True
         ).last_hidden_state
 
-        return 0
+        # 根據 attention mask 計算一個 batch 中每個 sequence 的長度 
+        seq_len = [len(seq) for seq in attention_mask]
+
+        bilstm_input = pack_padded_sequence(
+            bert_last_hidden_state,
+            seq_len,
+            batch_first=True,
+            enforce_sorted=False
+        )
+
+        bilstm_output, _ = self.BiLSTM(bilstm_input)
+
+        bilstm_output_for_avg_pool, _ = pad_packed_sequence(
+            bilstm_output,
+            batch_first=True,
+            padding_value=0
+        )
+        bilstm_output_for_max_pool, _ = pad_packed_sequence(
+            bilstm_output,
+            batch_first=True,
+            padding_value=float("-inf")
+        )
+
+        avg_pooling = torch.sum(bilstm_output_for_avg_pool, dim=1)
+        avg_pooling /= torch.tensor(seq_len).unsqueeze(dim=1)
+
+        max_pooling, _ = torch.max(bilstm_output_for_max_pool, dim=1)
+
+        avg_max_concat = torch.cat((max_pooling, avg_pooling), dim=1)
+        first_FC_output = self.first_FC(avg_max_concat)
+        relu_output = self.relu(first_FC_output)
+
+        FC_output_am_concat = torch.cat((relu_output, am_scores), dim=1)
+        FC_output_am_lm_concat = torch.cat((FC_output_am_concat, lm_scores), dim=1)
+
+        second_FC_output = self.second_FC(FC_output_am_lm_concat)
+        final_output = self.sigmoid(second_FC_output)
+        return final_output
