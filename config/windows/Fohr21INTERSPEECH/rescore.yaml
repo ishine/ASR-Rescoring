@@ -5,11 +5,27 @@ setting:
     - am
     - sem
 
-  dev: 
-    am_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
-    lm_data_file:
-    sem_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
-  test:
-    am_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
-    lm_data_file:
-    sem_data_file: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+  input_files:
+    dev:
+      am: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+      lm: 
+      sem: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+    test:
+      am: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\data\\test.am.json"
+      lm:
+      sem: "D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\result\\Fohr21INTERSPEECH\\test.sem.json"
+
+  step: 1
+  weight_range:
+    am: 
+      start: 1
+      end: 1
+    lm:
+      start: 0
+      end: 10
+    sem:
+      start: 0
+      end: 100
+
+  max_utts: 1
+  n_best: 2
