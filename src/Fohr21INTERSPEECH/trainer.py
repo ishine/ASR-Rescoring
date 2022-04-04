@@ -234,7 +234,10 @@ class BERTalsemTrainer(BaseTrainer):
     def prepare_dataset(self, data):
         input_ids = []
         token_type_ids = []
+        am_scores = []
+        lm_scores = []
         labels = []
+        
         for utt in tqdm(data, total=len(data)): 
 
             for _ in range(len(utt.hyps)):
@@ -259,26 +262,30 @@ class BERTalsemTrainer(BaseTrainer):
                         [0] * len(["[CLS]"] + hyp_i_token_seq + ["[SEP]"])
                         + [1] * len(hyp_j_token_seq + ["[SEP]"])
                     )
+                    am_scores.append(hyp_i.am_score, hyp_j.am_score)
+                    lm_scores.append(hyp_i.lm_score, hyp_j.lm_score)
                     labels.append(1 if hyp_i.cer < hyp_j.cer else 0)
 
                 utt.hyps.append(hyp_i)
 
         attention_masks = [[1]*len(row) for row in input_ids]
         
-        return self.MyDataset(input_ids, token_type_ids, labels, attention_masks)
+        return self.MyDataset(input_ids, token_type_ids, am_scores, lm_scores, labels, attention_masks)
     
     def collate(self, data):
-        input_ids_tensors, token_type_ids_tensors, labels_tensors, attention_masks_tensors = zip(*data)
+        input_ids_tensors, token_type_ids_tensors, am_scores_tensors, \
+            lm_scores_tensors, labels_tensors, attention_masks_tensors = zip(*data)
 
         input_ids_tensor = pad_sequence(input_ids_tensors, batch_first=True)
         token_type_ids_tensor = pad_sequence(token_type_ids_tensors, batch_first=True)
         attention_masks_tensor = pad_sequence(attention_masks_tensors, batch_first=True)
         labels_tensor = torch.stack(labels_tensors)
 
-        return input_ids_tensor, token_type_ids_tensor, attention_masks_tensor, labels_tensor
+        return input_ids_tensor, token_type_ids_tensor, attention_masks_tensor, \
+            am_scores_tensors, lm_scores_tensors, labels_tensor
     
     def load_model(self):
-        self.model = BERTsem(self.model_config)
+        self.model = BERTalsem(self.model_config)
         return self.model
     
     def run_one_epoch(self, dataloader, train_mode: bool):
@@ -293,10 +300,12 @@ class BERTalsemTrainer(BaseTrainer):
 
         epoch_loss = 0
         loop = tqdm(enumerate(dataloader), total=len(dataloader))
-        for _, (input_ids, token_type_ids, attention_masks, labels) in loop:
+        for _, (input_ids, token_type_ids, attention_masks, am_scores, lm_scores, labels) in loop:
             input_ids = input_ids.to(self.device)
             token_type_ids = token_type_ids.to(self.device)
             attention_masks = attention_masks.to(self.device)
+            am_scores = am_scores.to(self.device)
+            lm_scores = lm_scores.to(self.device)
             labels = labels.to(self.device)
 
             with torch.set_grad_enabled(train_mode):
@@ -304,6 +313,8 @@ class BERTalsemTrainer(BaseTrainer):
                     input_ids=input_ids,
                     token_type_ids=token_type_ids,
                     attention_mask=attention_masks,
+                    am_scores = am_scores.to(self.device),
+                    lm_scores = lm_scores.to(self.device)
                 )
                 loss = self.compute_loss(output, labels)
                 if train_mode:
@@ -314,16 +325,17 @@ class BERTalsemTrainer(BaseTrainer):
             epoch_loss += loss.item()
                 
         return epoch_loss / len(dataloader)
-    
     def compute_loss(self, predictions, labels):
         BCE_loss_fn = torch.nn.BCELoss(reduction='mean')
         loss = BCE_loss_fn(predictions, labels)
         return loss
-
+        
     class MyDataset(Dataset):
-        def __init__(self, input_ids, token_type_ids, labels, attention_masks):
+        def __init__(self, input_ids, token_type_ids, am_scores, lm_scores,labels, attention_masks):
             self.input_ids = input_ids
             self.token_type_ids = token_type_ids
+            self.am_scores = am_scores
+            self.lm_scores = lm_scores
             self.labels = labels
             self.attention_masks = attention_masks
             
@@ -333,7 +345,9 @@ class BERTalsemTrainer(BaseTrainer):
         def __getitem__(self, idx):
             input_ids_tensor = torch.tensor(self.input_ids[idx], dtype=torch.long)
             token_type_ids_tensor = torch.tensor(self.token_type_ids[idx], dtype=torch.long)
+            am_scores_tensor = torch.tensor(self.am_scores, dtype=torch.float)
+            lm_scores_tensor = torch.tensor(self.lm_scores, dtype=torch.float)
             labels_tensor = torch.tensor(self.labels[idx], dtype=torch.float)
             attention_masks_tensor = torch.tensor(self.attention_masks[idx], dtype=torch.long)
-            return input_ids_tensor, token_type_ids_tensor, labels_tensor, attention_masks_tensor
-
+            return input_ids_tensor, token_type_ids_tensor, am_scores_tensor, \
+                lm_scores_tensor,  labels_tensor, attention_masks_tensor
