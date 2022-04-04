@@ -1,4 +1,5 @@
 import sys
+import itertools
 import torch
 from tqdm import tqdm
 from jiwer import cer
@@ -10,70 +11,77 @@ class Rescorer():
         print("Setting rescorer ...")
         self.config = config
 
-    def parse_data(self, data_path):
-        data_parser = DataParser(json_file_path=data_path)
+    def parse_data(self, data_path, max_utts, n_best):
+        data_parser = DataParser(data_path, max_utts, n_best)
         data = data_parser.parse()
         return data
 
-    def find_best_weight(self, p_ranges: tuple, scores: tuple, step=1):
-
+    def find_best_weight(self, weight_pairs:list, scores: list):
         best_cer = sys.float_info.max
-        for p_range, score in zip(p_ranges, scores):
+        for weight_pair in tqdm(weight_pairs, total=len(weight_pairs)):
+            final_score = self.combine_score(weight_pair, scores)
+            print(final_score)
+            hyps_ids = final_score.argmax(dim=1)
+            
+            ref_texts, hyp_texts = [], []
+            for utt, hyp_idx in zip(self.dev_am_data.utt_set, hyps_ids):
+                ref_texts.append(utt.ref.text)
+                hyp_texts.append(utt.hyps[hyp_idx].text)
+            
+            error_rate = cer(ref_texts, hyp_texts)
+            if error_rate < best_cer:
+                best_cer = error_rate
+                best_weights = weight_pair
 
-
-        for alpha in tqdm(range(p_ranges[0][0], p_ranges[0][1]+1, step)):
-            for beta in tqdm(range(p_ranges[1][0], p_ranges[1][1]+1, step), leave=False):
-                for gamma in tqdm(range(p_ranges[2][0], p_ranges[2][1]+1, step), leave=False):
-                    combined_score = self.combine_score((alpha, beta, gamma), scores)
-                    hyps_ids = combined_score.argmax(dim=1)
-                    
-                    ref_texts, hyp_texts = [], []
-                    for utt, hyp_idx in zip(self.dev_am_data.utt_set, hyps_ids):
-                        ref_texts.append(utt.ref.text)
-                        hyp_texts.append(utt.hyps[hyp_idx].text)
-                    
-                    cer = cer(ref_texts, hyp_texts)
-                    if cer < best_cer:
-                        best_cer = cer
-                        best_weights = (alpha, beta, gamma)
         return best_weights
 
-    def combine_score(self, weights, scores):
-        combined_score = 1
-        for weight, score in zip(weights, scores):
-            combined_score *= torch.pow(score, weight)
-        return combined_score
+    def combine_score(self, weight_pair, scores):
+        final_score = 1
+        print(weight_pair)
+        print(scores)
+        for weight, score in zip(weight_pair, scores):
+            final_score *= torch.pow(score, weight)
+        return final_score
 
     def rescore(self):
         print("Parsing dev and test data ...")
         self.scores = {}
-        for score_type in self.config.use_score:
-            input_file = getattr(self.config.input_files, score_type)
-            self.scores[score_type] = {}
-            for file_type in ["dev", "test"]:
-                path = getattr(input_file, file_type)
-                data = self.parse_data(path)
-                self.scores[score_type][file_type] = torch.tensor(data.get_scores())
+        for file_type in ["dev", "test"]:
+            self.scores[file_type] = []
+            ft = getattr(self.config.input_files, file_type)
+            for score_type in self.config.use_score:
+                path = getattr(ft, score_type)
+                data = self.parse_data(path, self.config.max_utts, self.config.n_best)
 
-        self.p_range = {}
-        for score_type in self.config.use_score:
-            range = getattr(self.config.parameter_range, score_type)
-            self.p_range[score_type] = {}
-            start = getattr(range, "start")
-            end = getattr(range, "end")
-            self.p_range[score_type] = (start, end)
+                score = torch.tensor(data.get_scores())
+                if score_type == "am":
+                    setattr(self, f"{file_type}_{score_type}_data", data)
+                    # shift score，因為本am score為負數
+                    score -= (torch.min(score, dim=1, keepdim=True).values - 1)
 
+                self.scores[file_type].append(score)
+
+        self.weight_range = []
+        for score_type in self.config.use_score:
+            r = getattr(self.config.weight_range, score_type)
+            start = getattr(r, "start")
+            end = getattr(r, "end")
+            self.weight_range.append(list(range(start, end+1)))
+
+        self.weight_pairs = list(itertools.product(*self.weight_range))
+            
         print("Using dev to find best weight ...")
-        best_weights = self.find_best_weight(p_range=())
+        best_weights = self.find_best_weight(self.weight_pairs, self.scores["dev"])
 
+        print("best weights: ", best_weights)
         print("Computing test score ...")
-        combined_score = self.combine_score()
+        combined_score = self.combine_score(best_weights, self.scores["test"])
         hyps_ids = combined_score.argmax(dim=1)
         
         ref_texts, hyp_texts = [], []
-        for utt, hyp_idx in zip(self.dev_am_data.utt_set, hyps_ids):
+        for utt, hyp_idx in zip(self.test_am_data.utt_set, hyps_ids):
             ref_texts.append(utt.ref.text)
             hyp_texts.append(utt.hyps[hyp_idx].text)
         
-        cer = cer(ref_texts, hyp_texts)
-        print("test cer: ", cer)
+        error_rate = cer(ref_texts, hyp_texts)
+        print("test cer: ", error_rate)
