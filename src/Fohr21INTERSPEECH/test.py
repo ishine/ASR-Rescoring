@@ -1,22 +1,18 @@
-import sys
-sys.path.append("D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\src")
-from models.semantic_bert import SemanticBert 
-
 import torch
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
-from models.semantic_bert import AMLMSemanticBert 
-input1 = torch.tensor(
+
+input_seq1 = torch.tensor(
     [[ 1,  2,  3, 3],
      [ 4,  5,  6, 6]],
     dtype=torch.float)
 
-input2 = torch.tensor(
+input_seq2 = torch.tensor(
     [[11, 12, 13, 13],
      [14, 15, 16, 16],
      [17, 18, 19, 19]],
     dtype=torch.float)
 
-inputs = [input1, input2]
+inputs = [input_seq1, input_seq2]
 
 batch = pad_sequence(inputs, batch_first=True)
 
