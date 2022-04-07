@@ -325,6 +325,7 @@ class BERTalsemTrainer(BaseTrainer):
             epoch_loss += loss.item()
                 
         return epoch_loss / len(dataloader)
+
     def compute_loss(self, predictions, labels):
         BCE_loss_fn = torch.nn.BCELoss(reduction='mean')
         loss = BCE_loss_fn(predictions, labels)
