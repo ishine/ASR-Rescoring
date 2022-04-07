@@ -29,7 +29,6 @@ class BERTsem(torch.nn.Module):
 class BERTalsem(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.drop_layer = torch.nn.Dropout(p=0.3)
         self.bert = BertModel.from_pretrained(
             config.bert,
             attention_probs_dropout_prob=0.3,
@@ -47,10 +46,10 @@ class BERTalsem(torch.nn.Module):
             out_features=2*config.lstm_hidden_size
         )
         self.relu = torch.nn.ReLU()
-        self.second_FC = torch.nn.Linear(in_features=132, out_features=1)
+        self.second_FC = torch.nn.Linear(in_features=130, out_features=1)
         self.sigmoid = torch.nn.Sigmoid()
 
-    def forward(self, input_ids, token_type_ids, attention_mask, am_scores, lm_scores):
+    def forward(self, input_ids, token_type_ids, attention_mask, scores):
         bert_last_hidden_state = self.bert(
             input_ids=input_ids, 
             token_type_ids=token_type_ids,
@@ -90,9 +89,8 @@ class BERTalsem(torch.nn.Module):
         first_FC_output = self.first_FC(avg_max_concat)
         relu_output = self.relu(first_FC_output)
 
-        FC_output_am_concat = torch.cat((relu_output, am_scores), dim=1)
-        FC_output_am_lm_concat = torch.cat((FC_output_am_concat, lm_scores), dim=1)
+        relu_output_concat_score = torch.cat((relu_output, scores), dim=1)
 
-        second_FC_output = self.second_FC(FC_output_am_lm_concat)
+        second_FC_output = self.second_FC(relu_output_concat_score)
         final_output = self.sigmoid(second_FC_output)
         return final_output

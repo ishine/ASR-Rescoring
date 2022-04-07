@@ -20,7 +20,7 @@ class Rescorer():
         best_cer = sys.float_info.max
         for weight_pair in tqdm(weight_pairs, total=len(weight_pairs)):
             final_score = self.combine_score(weight_pair, scores)
-            print(final_score)
+            #print(final_score)
             hyps_ids = final_score.argmax(dim=1)
             
             ref_texts, hyp_texts = [], []
@@ -37,8 +37,8 @@ class Rescorer():
 
     def combine_score(self, weight_pair, scores):
         final_score = 1
-        print(weight_pair)
-        print(scores)
+        #print(weight_pair)
+        #print(scores)
         for weight, score in zip(weight_pair, scores):
             final_score *= torch.pow(score, weight)
         return final_score
@@ -53,11 +53,11 @@ class Rescorer():
                 path = getattr(ft, score_type)
                 data = self.parse_data(path, self.config.max_utts, self.config.n_best)
 
-                score = torch.tensor(data.get_scores())
+                score = torch.tensor(data.get_scores(), dtype=torch.double)
                 if score_type == "am":
                     setattr(self, f"{file_type}_{score_type}_data", data)
                     # shift score，因為本am score為負數
-                    score -= (torch.min(score, dim=1, keepdim=True).values - 1)
+                    score -= (torch.min(score, dim=1, keepdim=True).values - 2)
 
                 self.scores[file_type].append(score)
 
