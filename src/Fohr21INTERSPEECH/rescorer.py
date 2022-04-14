@@ -5,7 +5,7 @@ from tqdm import tqdm
 from jiwer import cer
 
 from util.dataparser import DataParser
-
+from util.plot import plot
 class Rescorer():
     def __init__(self, config) -> None:
         print("Setting rescorer ...")
@@ -16,29 +16,29 @@ class Rescorer():
         data = data_parser.parse()
         return data
 
-    def find_best_weight(self, weight_pairs:list, scores: list):
+    def find_best_weight(self, text_data, weight_pairs:list, scores: list):
+        cer_history = []
         best_cer = sys.float_info.max
         for weight_pair in tqdm(weight_pairs, total=len(weight_pairs)):
             final_score = self.combine_score(weight_pair, scores)
-            #print(final_score)
             hyps_ids = final_score.argmax(dim=1)
             
             ref_texts, hyp_texts = [], []
-            for utt, hyp_idx in zip(self.dev_am_data.utt_set, hyps_ids):
+            #for utt, hyp_idx in zip(self.dev_am_data.utt_set, hyps_ids):
+            for utt, hyp_idx in zip(text_data, hyps_ids):
                 ref_texts.append(utt.ref.text)
                 hyp_texts.append(utt.hyps[hyp_idx].text)
             
             error_rate = cer(ref_texts, hyp_texts)
+            cer_history.append(error_rate)
             if error_rate < best_cer:
                 best_cer = error_rate
                 best_weights = weight_pair
 
-        return best_weights
+        return best_weights, best_cer, cer_history
 
     def combine_score(self, weight_pair, scores):
         final_score = 1
-        #print(weight_pair)
-        #print(scores)
         for weight, score in zip(weight_pair, scores):
             final_score *= torch.pow(score, weight)
         return final_score
@@ -71,9 +71,15 @@ class Rescorer():
         self.weight_pairs = list(itertools.product(*self.weight_range))
             
         print("Using dev to find best weight ...")
-        best_weights = self.find_best_weight(self.weight_pairs, self.scores["dev"])
-
+        best_weights, best_cer, dev_cer_history = self.find_best_weight(
+            self.dev_am_data.utt_set,
+            self.weight_pairs,
+            self.scores["dev"]
+        )
+        
         print("best weights: ", best_weights)
+        print("best dev cer: ", best_cer)
+        
         print("Computing test score ...")
         combined_score = self.combine_score(best_weights, self.scores["test"])
         hyps_ids = combined_score.argmax(dim=1)
@@ -85,3 +91,19 @@ class Rescorer():
         
         error_rate = cer(ref_texts, hyp_texts)
         print("test cer: ", error_rate)
+
+
+
+        test_best_weights, test_best_cer, test_cer_history = self.find_best_weight(
+            self.test_am_data.utt_set,
+            self.weight_pairs,
+            self.scores["test"]
+        )
+        print("best (cheating) test set weights: ", test_best_weights)
+        print("best (cheating) test set score: ", test_best_cer)
+        plot(
+            self.config.output_file.cer_weight_curve_file,
+            ["dev", "test"], 
+            [dev_cer_history, test_cer_history],
+            {"x": "weight", "y": "CER"}
+        )

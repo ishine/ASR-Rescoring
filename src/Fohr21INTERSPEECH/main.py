@@ -3,7 +3,7 @@ sys.path.append("/home/chkuo/chkuo/experiment/ASR-Rescoring/src")
 #sys.path.append("D:\\NTUST\\NLP\\experiments\\ASR-Rescoring\\src")
 from util.arg_parser import ArgParser 
 from trainer import BERTsemTrainer, BERTalsemTrainer
-from scorer import BERTsemScorer
+from scorer import BERTsemScorer, BERTalsemScorer
 from rescorer import Rescorer
 
 if __name__ == "__main__":
@@ -20,6 +20,8 @@ if __name__ == "__main__":
     elif config.action == "score":
         if config.method == "bertsem":
             scorer = BERTsemScorer(config.setting)
+        if config.method == "bertalsem":
+            scorer = BERTalsemScorer(config.setting)
         scorer.score()
 
     elif config.action == "rescore":

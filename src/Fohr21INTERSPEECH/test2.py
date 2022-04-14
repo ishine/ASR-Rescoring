@@ -1,4 +1,7 @@
-from transformers import BertModel
+import numpy as np
+a = np.array([1,2,3,4,5,6,7,8,9,10,11])
 
-bert = BertModel.from_pretrained("bert-base-chinese", attention_probs_dropout_prob=0.3, hidden_dropout_prob=0.3)
-print(bert.config)
+step = 4
+l = len(a)%step
+print(len(a)%step)
+print(a[:-1*(len(a)%step)])

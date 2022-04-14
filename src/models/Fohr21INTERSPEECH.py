@@ -31,8 +31,8 @@ class BERTalsem(torch.nn.Module):
         super().__init__()
         self.bert = BertModel.from_pretrained(
             config.bert,
-            attention_probs_dropout_prob=0.3,
-            hidden_dropout_prob=0.3
+            attention_probs_dropout_prob=config.dropout,
+            hidden_dropout_prob=config.dropout
         )
         self.BiLSTM = torch.nn.LSTM(
             input_size=self.bert.config.hidden_size,
@@ -49,7 +49,7 @@ class BERTalsem(torch.nn.Module):
         self.second_FC = torch.nn.Linear(in_features=130, out_features=1)
         self.sigmoid = torch.nn.Sigmoid()
 
-    def forward(self, input_ids, token_type_ids, attention_mask, scores):
+    def forward(self, device, input_ids, token_type_ids, attention_mask, scores):
         bert_last_hidden_state = self.bert(
             input_ids=input_ids, 
             token_type_ids=token_type_ids,
@@ -74,6 +74,7 @@ class BERTalsem(torch.nn.Module):
             batch_first=True,
             padding_value=0
         )
+
         bilstm_output_for_max_pool, _ = pad_packed_sequence(
             bilstm_output,
             batch_first=True,
@@ -81,11 +82,13 @@ class BERTalsem(torch.nn.Module):
         )
 
         avg_pooling = torch.sum(bilstm_output_for_avg_pool, dim=1)
-        avg_pooling /= torch.tensor(seq_len).unsqueeze(dim=1)
+        seq_len = torch.tensor(seq_len).unsqueeze(dim=1).to(device)
+        avg_pooling /= seq_len
 
         max_pooling, _ = torch.max(bilstm_output_for_max_pool, dim=1)
 
         avg_max_concat = torch.cat((max_pooling, avg_pooling), dim=1)
+
         first_FC_output = self.first_FC(avg_max_concat)
         relu_output = self.relu(first_FC_output)
 

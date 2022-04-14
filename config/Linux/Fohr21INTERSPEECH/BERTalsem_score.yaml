@@ -1,0 +1,23 @@
+action: score
+
+method: "bertalsem"
+
+setting:
+  seed: 10
+  device: "cuda:0"
+  asr_data_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
+  model_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_no_freeze/checkpoint_4.pth"
+  output_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_no_freeze/test.sem.json"
+
+  preprocess:
+    n_best: 15
+    max_utts: 999999
+
+  model:
+    bert: "bert-base-chinese"
+    lstm_hidden_size: 64
+    dropout: 0
+
+  dataloader:
+    batch_size: 400
+    num_worker: 5

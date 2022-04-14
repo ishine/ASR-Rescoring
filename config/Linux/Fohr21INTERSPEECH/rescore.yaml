@@ -7,13 +7,17 @@ setting:
 
   input_files:
     dev:
-      am: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
+      am: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
       lm: 
-      sem: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/sem/dev.sem.json"
+      sem: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem/test.sem.json"
     test:
       am: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
       lm:
-      sem: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/sem/test.sem.json"
+      sem: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem/test.sem.json"
+
+  output_file:
+    cer_weight_curve_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem/cer_weight_curve"
+
 
   step: 1
   weight_range:

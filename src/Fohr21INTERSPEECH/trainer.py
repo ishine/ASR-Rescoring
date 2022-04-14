@@ -1,4 +1,7 @@
 import abc
+import json
+import numpy as np
+import logging
 import torch
 import torch.optim as optim
 from torch.nn.utils.rnn import pad_sequence
@@ -8,14 +11,21 @@ from tqdm import tqdm
 
 from models.Fohr21INTERSPEECH import BERTsem, BERTalsem 
 from util.dataparser import DataParser
-from util.saving import loss_saving, model_saving
+from util.saving import json_saving, loss_saving, model_saving
+from util.freezer import freeze_by_name, unfreeze_by_name
 
 
 class BaseTrainer(metaclass=abc.ABCMeta):
     def __init__(self, config) -> None:
-
+        
         print("Setting trainer ...")
-
+        self.config = config
+        logging.basicConfig(filename=self.config.output_path + "/training.log",
+            filemode='a',
+            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+            datefmt='%H:%M:%S',
+            level=logging.INFO
+        )
         self.seed = config.seed
         self.device = config.device
         
@@ -94,25 +104,45 @@ class BaseTrainer(metaclass=abc.ABCMeta):
         self.model = self.load_model()
 
         print("Start training ...")
-        train_loss_record = [None]*self.opt_config.epoch
-        dev_loss_record = [None]*self.opt_config.epoch
+        step = 1000
+        loss_record = {
+            "train": {"every_epoch": [], f"every_{step}_batch": []},
+            "dev": {"every_epoch": [], f"every_{step}_batch": []}
+        }
 
         for epoch_id in range(1, self.opt_config.epoch+1):
+            if self.config.resume.epoch!= None and epoch_id <= self.config.resume.epoch:
+                loss_record = json.load(
+                    open(self.output_path + "/loss.json", "r", encoding="utf-8")
+                )
+
+                print("skip epoch ", epoch_id)
+                continue
+
             print("Epoch {}/{}".format(epoch_id, self.opt_config.epoch))
             
-            train_loss_record[epoch_id-1] = self.run_one_epoch(self.train_dataloader, train_mode=True)
-            print("Epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
+            if epoch_id <= self.opt_config.bert_freeze_epoch:
+                freeze_by_name(self.model, "bert")
+            else:
+                unfreeze_by_name(self.model, "bert")
 
-            dev_loss_record[epoch_id-1] = self.run_one_epoch(self.dev_dataloader, train_mode=False)
-            print("Epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
+            epoch_loss, batch_loss = self.run_one_epoch(self.train_dataloader, train_mode=True)
+            loss_record["train"]["every_epoch"].append(epoch_loss)
+            loss_record["train"][f"every_{step}_batch"] += batch_loss
+            print("Epoch ", epoch_id, " train loss: ", epoch_loss, "\n")
+
+            epoch_loss, batch_loss = self.run_one_epoch(self.dev_dataloader, train_mode=False)
+            loss_record["dev"]["every_epoch"].append(epoch_loss)
+            loss_record["dev"][f"every_{step}_batch"] += batch_loss
+            print("Epoch ", epoch_id, " dev loss: ", epoch_loss, "\n")
 
             model_saving(self.output_path, self.model.state_dict(), epoch_id)
         
-            loss_saving(
-                self.output_path,
-                {"train": train_loss_record, "dev": dev_loss_record}
+            json_saving(
+                self.output_path + "/loss.json" ,
+                loss_record
             )
-        
+
         print("Training finish.")
 
 
@@ -168,6 +198,9 @@ class BERTsemTrainer(BaseTrainer):
     
     def load_model(self):
         self.model = BERTsem(self.model_config)
+        if self.config.resume.model_weight_path != None:
+            checkpoint = torch.load(self.config.resume.model_weight_path)
+            self.model.load_state_dict(checkpoint)
         return self.model
     
     def run_one_epoch(self, dataloader, train_mode: bool):
@@ -181,6 +214,7 @@ class BERTsemTrainer(BaseTrainer):
             self.model.eval()
 
         epoch_loss = 0
+        batch_loss = []
         loop = tqdm(enumerate(dataloader), total=len(dataloader))
         for _, (input_ids, token_type_ids, attention_masks, labels) in loop:
             input_ids = input_ids.to(self.device)
@@ -195,6 +229,7 @@ class BERTsemTrainer(BaseTrainer):
                     attention_mask=attention_masks,
                 )
                 loss = self.compute_loss(output, labels)
+                batch_loss.append(loss)
                 if train_mode:
                     loss.backward()
                     optimizer.step()
@@ -202,7 +237,7 @@ class BERTsemTrainer(BaseTrainer):
 
             epoch_loss += loss.item()
                 
-        return epoch_loss / len(dataloader)
+        return epoch_loss / len(dataloader), batch_loss
     
     def compute_loss(self, predictions, labels):
         BCE_loss_fn = torch.nn.BCELoss(reduction='mean')
@@ -280,27 +315,31 @@ class BERTalsemTrainer(BaseTrainer):
         scores_tensor = torch.stack(scores_tensors)
         labels_tensor = torch.stack(labels_tensors)
 
-        print(scores_tensor)
         return input_ids_tensor, token_type_ids_tensor, \
             attention_masks_tensor, scores_tensor, labels_tensor
     
     def load_model(self):
         self.model = BERTalsem(self.model_config)
+        if self.config.resume.model_weight_path != None:
+            checkpoint = torch.load(self.config.resume.model_weight_path)
+            self.model.load_state_dict(checkpoint)
         return self.model
     
     def run_one_epoch(self, dataloader, train_mode: bool):
         self.model = self.model.to(self.device)
         
         if train_mode:
-            self.model.train()
+            self.model = self.model.train()
             optimizer = optim.AdamW(self.model.parameters(), lr=self.opt_config.lr)
             optimizer.zero_grad()
         else:
-            self.model.eval()
+            self.model = self.model.eval()
 
         epoch_loss = 0
-        loop = tqdm(enumerate(dataloader), total=len(dataloader))
-        for _, (input_ids, token_type_ids, attention_masks, scores, labels) in loop:
+        batch_loss_record = []
+        batch_loss = 0
+        loop = tqdm(enumerate(dataloader, start=1), total=len(dataloader))
+        for batch_id, (input_ids, token_type_ids, attention_masks, scores, labels) in loop:
             input_ids = input_ids.to(self.device)
             token_type_ids = token_type_ids.to(self.device)
             attention_masks = attention_masks.to(self.device)
@@ -309,20 +348,28 @@ class BERTalsemTrainer(BaseTrainer):
 
             with torch.set_grad_enabled(train_mode):
                 output = self.model(
+                    self.device,
                     input_ids=input_ids,
                     token_type_ids=token_type_ids,
                     attention_mask=attention_masks,
                     scores = scores.to(self.device),
-                )
+                ).squeeze(dim=1)
                 loss = self.compute_loss(output, labels)
                 if train_mode:
                     loss.backward()
                     optimizer.step()
                     optimizer.zero_grad()
 
+            batch_loss += loss.item()
+            if batch_id % self.config.batch_loss_rescord_step == 0:
+                batch_loss /= self.config.batch_loss_rescord_step
+                logging.info(f"batch {batch_id} loss: " + str(batch_loss))
+                batch_loss_record.append(batch_loss)
+                batch_loss = 0
+
             epoch_loss += loss.item()
                 
-        return epoch_loss / len(dataloader)
+        return epoch_loss / len(dataloader), batch_loss_record
     
     def compute_loss(self, predictions, labels):
         BCE_loss_fn = torch.nn.BCELoss(reduction='mean')
