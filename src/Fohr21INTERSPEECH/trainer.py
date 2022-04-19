@@ -296,7 +296,7 @@ class BERTalsemTrainer(BaseTrainer):
                         [0] * len(["[CLS]"] + hyp_i_token_seq + ["[SEP]"])
                         + [1] * len(hyp_j_token_seq + ["[SEP]"])
                     )
-                    scores.append([hyp_i.score, hyp_j.score])
+                    scores.append([hyp_i.score / len(hyp_i.text), hyp_j.score / len(hyp_j.text)])
                     labels.append(1 if hyp_i.cer < hyp_j.cer else 0)
 
                 utt.hyps.append(hyp_i)

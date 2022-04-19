@@ -8,14 +8,14 @@ setting:
 
   train_data_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/train.am.json"
   dev_data_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/dev.am.json"
-  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem"
+  output_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_normalized_ac"
 
   batch_loss_rescord_step: 1000
 
   resume: 
     # if epoch == 1, it will start training at epoch 2
-    epoch: 1
-    model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem/checkpoint_1.pth" 
+    epoch: 3
+    model_weight_path: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_normalized_ac/checkpoint_3.pth"
 
   preprocess:
     n_best: 15

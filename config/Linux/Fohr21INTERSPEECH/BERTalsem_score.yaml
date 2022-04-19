@@ -6,8 +6,8 @@ setting:
   seed: 10
   device: "cuda:0"
   asr_data_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/data/test.am.json"
-  model_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_no_freeze/checkpoint_4.pth"
-  output_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_no_freeze/test.sem.json"
+  model_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_normalized_ac/checkpoint_3.pth"
+  output_file: "/home/chkuo/chkuo/experiment/ASR-Rescoring/result/Fohr21INTERSPEECH/alsem_normalized_ac/test.sem.json"
 
   preprocess:
     n_best: 15
