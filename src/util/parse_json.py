@@ -65,9 +65,9 @@ def parse_json(
 
     if "hyp_text" in requirements:
         hyp_text = [
-            [(utt_id, hyp_id, hyp["text"]) if with_id else hyp["text"] 
+            [hyp["text"] 
             for index, (hyp_id, hyp) in enumerate(utt_hyps.items()) if index < n_best or n_best == -1]
-            for (utt_id, utt_hyps) in all_hyps
+            for utt_hyps in all_hyps
         ]
         output["hyp_text"] = flatten_2dlist(hyp_text) if flatten else hyp_text
 

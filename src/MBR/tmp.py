@@ -1,15 +1,11 @@
 import csv
-import math
-from multiprocessing import Value
 import numpy as np
-from transformers.utils.dummy_sentencepiece_objects import BertGenerationTokenizer
-import torch
 import sys
 from Bert_score.bert_score.scorer import BERTScorer
 from tqdm import tqdm
 from jiwer import cer
-from transformers import AutoModel
 from sklearn.preprocessing import normalize
+from util.parse_json import parse_json
 
 root_path = "/home/chkuo/chkuo/experiment/bertscore_MBR/data"
 train_path = root_path  + "/AISHELL1_train.csv"

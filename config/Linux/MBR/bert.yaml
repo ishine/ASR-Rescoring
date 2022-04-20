@@ -1,0 +1,7 @@
+dev_file: "../../data/dev.am.json"
+test_file: "../../data/test.am.json"
+
+output_path: "../../result/MBR/"
+
+max_utts: 10
+n_best: 15
