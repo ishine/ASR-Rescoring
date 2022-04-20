@@ -70,8 +70,6 @@ if __name__ == "__main__":
             dev_dataloader = MWED.prepare_dataloader(dev_dataset)
             
             MWED.train(train_dataloader, dev_dataloader)
-        elif config.train.type == "asr_semantic":
-            semantic(config.train)
 
     # do inference
     if "scoring" in config.actions:
