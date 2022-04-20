@@ -10,8 +10,6 @@ from md_mwer import MD_MWER_Training, MD_MWED_training
 
 from error_detection_training import ErrorDetectionTraining
 
-from semantic.semantic import semantic
-
 from rescorer import Rescorer
 
 from util.config import parse_config

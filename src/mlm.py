@@ -45,7 +45,7 @@ class MaskedLanguageModelTraining():
         self.dev_dataset = self.prepare_dataset(self.dev_ref_text)
     
         self.train_dataloader = self.prepare_dataloader(self.train_dataset, for_train=True)
-        self.dev_dataloader = self.prepare_dataloader(self.dev_dataset)
+        self.dev_dataloader = self.prepare_dataloader(self.dev_dataset, for_train=False)
 
         print("loading model ...")
         self.model = BertForMaskedLM.from_pretrained(self.config.model)
@@ -148,7 +148,8 @@ class MaskedLanguageModelTraining():
                 output = self.model(
                     input_ids=input_ids,
                     attention_mask=attention_masks,
-                    labels=labels
+                    labels=labels,
+                    return_dict=True
                 )
 
                 if train_mode:
