@@ -293,7 +293,8 @@ class PLLScoring():
                 # output_logits -> size: [batch size(seq num), seq length(token num), vocab size]
                 output_logits = self.model(
                     input_ids = input_ids,
-                    attention_mask = attention_masks
+                    attention_mask = attention_masks,
+                    return_dict=True
                 ).logits
 
                 # 取出這個batch中每個seq個被mask的token的位置對應的output logits
