@@ -2,6 +2,6 @@ dev_file: "../../data/dev.am.json"
 test_file: "../../data/test.am.json"
 
 output_path: "../../result/MBR/"
-
-max_utts: 10
+device: "cuda:0"
+max_utts: 999999
 n_best: 15

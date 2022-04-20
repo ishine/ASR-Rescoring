@@ -11,7 +11,7 @@ from util.arg_parser import ArgParser
 from util.parse_json import parse_json
 
 
-def find_best_length(n_best: int, dev_refs: List[str], dev_hyps: List[List[str]]):
+def find_best_length(n_best: int, dev_refs: List[str], dev_hyps: List[List[str]], device: str):
     cer_record = []
     best_cer = sys.maxsize
     best_length = 2
@@ -31,7 +31,7 @@ def find_best_length(n_best: int, dev_refs: List[str], dev_hyps: List[List[str]]
             refs,
             lang="zh",
             verbose=True,
-            device="gpu",
+            device=device,
             batch_size=64
         )
         recall = torch.reshape(recall, (len(dev_hyps), length, length-1))
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         n_best=config.n_best
     )
 
-    cer_record, best_cer, best_length = find_best_length(config.n_best, dev_refs, dev_hyps)
+    cer_record, best_cer, best_length = find_best_length(config.n_best, dev_refs, dev_hyps, device=config.device)
     print("cer_record:", cer_record)
     print("best_cer:", best_cer)
     print("best_length:", best_length)
