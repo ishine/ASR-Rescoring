@@ -35,15 +35,15 @@ if __name__ == "__main__":
 
     jobs = [{
             "task": "for_training", 
-            "in": "../espnet_data/alfred/test/ref_text.json",
+            "in": "../espnet_data/alfred/train/ref_text.json",
             "out": "preprocessed_data/for_training/train.json"
         }, {
             "task": "for_training",
-            "in": "../espnet_data/alfred/test/ref_text.json",
+            "in": "../espnet_data/alfred/dev/ref_text.json",
             "out": "preprocessed_data/for_training/dev.json"
         }, {
             "task": "for_scoring",
-            "in": "../espnet_data/alfred/test/hyps_text.json",
+            "in": "../espnet_data/alfred/dev/hyps_text.json",
             "out": "preprocessed_data/for_scoring/dev.json"
         }, {
             "task": "for_scoring",
