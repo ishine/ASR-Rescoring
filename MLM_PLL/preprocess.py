@@ -1,62 +1,68 @@
+import sys
+sys.path.append("..")
 import json
 from tqdm import tqdm
 from transformers import BertTokenizer 
 
 from util.saving import json_saving
 
+def do_job(sentence, utt_id, task_type, output_json):
+    token_seq = bert_tokenizer.tokenize(sentence)
+    for mask_pos in range(len(token_seq)):
+        one_data = {}
+        one_data["utt_id"] = utt_id
+        one_data["input_ids"] = (
+            bert_tokenizer.convert_tokens_to_ids(
+                ["[CLS]"] + token_seq[:mask_pos]
+                + ["[MASK]"] + token_seq[mask_pos+1:]
+                + ["[SEP]"]
+            )
+        )
+        one_data["attention_masks"] = [1] * (len(token_seq) + 2)
+        one_data["mask_pos"] = mask_pos
+        if task_type == "for_training":
+            one_data["labels"] = (
+                bert_tokenizer.convert_tokens_to_ids(
+                    ["[CLS]"] + token_seq + ["[SEP]"]
+                )
+            )
+        output_json.append(one_data)
+    return output_json
+
+
 if __name__ == "__main__":
     bert_tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
 
-    input_paths = {
-        "train": "../espnet_data/train/ref_text.json",
-        "dev": "../espnet_data/dev/ref_text.json",
-        "test": "../espnet_data/test/ref_text.json"
-    }
-
-    output_paths = {
-        "train": "preprocessed_data/train.json",
-        "dev": "preprocessed_data/dev.json",
-        "test": "preprocessed_data/test.json"
-    }
-
-    output_jsons = {
-        "train": {},
-        "dev": {},
-        "test": {}
-    }
+    jobs = [{
+            "task": "for_training", 
+            "in": "../espnet_data/alfred/test/ref_text.json",
+            "out": "preprocessed_data/for_training/train.json"
+        }, {
+            "task": "for_training",
+            "in": "../espnet_data/alfred/test/ref_text.json",
+            "out": "preprocessed_data/for_training/dev.json"
+        }, {
+            "task": "for_scoring",
+            "in": "../espnet_data/alfred/test/hyps_text.json",
+            "out": "preprocessed_data/for_scoring/dev.json"
+        }, {
+            "task": "for_scoring",
+            "in": "../espnet_data/alfred/test/hyps_text.json",
+            "out": "preprocessed_data/for_scoring/test.json"
+        }
+    ]
     
-    for data_type, file_path in input_paths.items():
-        json_data = json.load(open(file_path, "r", encoding="utf-8"))
-        for utt_id, ref_text in tqdm(json_data.items()):
+    for job in jobs:
+        json_data = json.load(open(job["in"], "r", encoding="utf-8"))
 
-            output_jsons[data_type][utt_id] = {}
-            output_paths[data_type][utt_id]["input_ids"] = []
-            if data_type != "test":
-                output_paths[data_type][utt_id]["labels"] = []
-            output_paths[data_type][utt_id]["attention_masks"] = []
+        output_json = []
+        if job["task"] == "for_training":
+            for utt_id, sentence in tqdm(json_data.items()):
+                output_json = do_job(sentence, utt_id, job["task"], output_json)
 
-            token_seq = bert_tokenizer.tokenize(ref_text)
-            for mask_pos in range(len(token_seq)):
-                output_jsons[data_type]["input_ids"].append(
-                    bert_tokenizer.convert_tokens_to_ids(
-                        ["[CLS]"] + token_seq[:mask_pos]
-                        + ["[MASK]"] + token_seq[mask_pos+1:]
-                        + ["[SEP]"]
-                    )
-                )
+        elif job["task"] == "for_scoring":
+            for utt_id, hyps in tqdm(json_data.items()):
+                for hyp_id, sentence in hyps.items():
+                    output_json = do_job(sentence, utt_id, job["task"], output_json)
 
-                if data_type != "test":
-                    output_jsons[data_type]["labels"].append(
-                        bert_tokenizer.convert_token_to_ids(
-                            ["[CLS]"] + token_seq + ["[SEP]"]
-                        )
-                    )
-
-                output_jsons[data_type]["attention_masks"] = [1] * (len(token_seq) + 2)
-
-    # save preprocessed data
-    for data_type, file_path in output_paths.items():
-        json_saving(
-            file_path,
-            output_jsons[data_type]
-        )
+        json_saving(job["out"], output_json)

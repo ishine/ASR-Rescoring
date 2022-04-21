@@ -10,6 +10,8 @@
 /espnet_data/alfred/train
 /espnet_data/alfred/dev
 
+/MLM_PLL/preprocessed_data
+
 
 /result
 
