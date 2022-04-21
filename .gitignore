@@ -1,4 +1,15 @@
-/data/*.json
+/espnet_data/origin
+/espnet_data/train
+/espnet_data/dev
+/espnet_data/test
+
+/espnet_data/alfred/train_data.json
+/espnet_data/alfred/dev_data.json
+/espnet_data/alfred/test_data.json
+/espnet_data/alfred/rescore_data.zip
+/espnet_data/alfred/train
+/espnet_data/alfred/dev
+
 
 /result
 
