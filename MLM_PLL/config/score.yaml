@@ -1,0 +1,19 @@
+task: scoring
+
+seed: 10
+
+device: "cuda:0"
+
+dev_data_path: "preprocessed_data/for_scoring/dev.json"
+test_data_path: "preprocessed_data/for_scoring/test.json"
+checkpoint_path: "result/checkpoint_1.pth"
+output_path: "result/_"
+
+num_of_data: 10
+
+dataloader:
+  batch_size: 128
+  num_worker: 5
+
+model:
+  bert: "bert-base-chinese"

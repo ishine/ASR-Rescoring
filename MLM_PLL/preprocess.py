@@ -6,11 +6,12 @@ from transformers import BertTokenizer
 
 from util.saving import json_saving
 
-def do_job(sentence, utt_id, task_type, output_json):
+def do_job(sentence, utt_id, hyp_id, task_type, output_json):
     token_seq = bert_tokenizer.tokenize(sentence)
     for mask_pos in range(len(token_seq)):
         one_data = {}
         one_data["utt_id"] = utt_id
+        one_data["hyp_id"] = hyp_id
         one_data["input_ids"] = (
             bert_tokenizer.convert_tokens_to_ids(
                 ["[CLS]"] + token_seq[:mask_pos]
@@ -18,14 +19,13 @@ def do_job(sentence, utt_id, task_type, output_json):
                 + ["[SEP]"]
             )
         )
-        one_data["attention_masks"] = [1] * (len(token_seq) + 2)
-        one_data["mask_pos"] = mask_pos
-        if task_type == "for_training":
-            one_data["labels"] = (
-                bert_tokenizer.convert_tokens_to_ids(
-                    ["[CLS]"] + token_seq + ["[SEP]"]
-                )
+        one_data["attention_masks"] = [1] * (len(token_seq) + 2)    #  "+2" for [CLS] and [SEP]
+        one_data["mask_pos"] = mask_pos + 1     #  "+1" for [CLS]
+        one_data["labels"] = (
+            bert_tokenizer.convert_tokens_to_ids(
+                ["[CLS]"] + token_seq + ["[SEP]"]
             )
+        )
         output_json.append(one_data)
     return output_json
 
@@ -58,11 +58,11 @@ if __name__ == "__main__":
         output_json = []
         if job["task"] == "for_training":
             for utt_id, sentence in tqdm(json_data.items()):
-                output_json = do_job(sentence, utt_id, job["task"], output_json)
+                output_json = do_job(sentence, utt_id, None, job["task"], output_json)
 
         elif job["task"] == "for_scoring":
             for utt_id, hyps in tqdm(json_data.items()):
                 for hyp_id, sentence in hyps.items():
-                    output_json = do_job(sentence, utt_id, job["task"], output_json)
+                    output_json = do_job(sentence, utt_id, hyp_id, job["task"], output_json)
 
         json_saving(job["out"], output_json)

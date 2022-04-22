@@ -1,7 +1,7 @@
 # path setting
 dev_file: "../../data/dev.am.json"
 test_file: "../../data/test.am.json"
-output_path: "../../result/MBR"
+output_path: "./result"
 
 # bertsocre setting 
 utility_function: "bertscore"

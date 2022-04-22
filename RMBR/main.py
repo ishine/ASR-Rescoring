@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../../src")
+sys.path.append("..")
 from typing import List
 import logging
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     if config.utility_function == "bertscore":
         utility_function = BertScoreFunction(config)
-
+    
     logging.info(f"Running MBR on dev set to find best length ...")
     print("Running MBR on dev set to find best length ...")
     best_cer, best_length, best_mbr_score = find_best_length(
@@ -89,8 +89,7 @@ if __name__ == "__main__":
         for (hyp_id, hyp_content), score in zip(utt_content["hyp"].items(), scores):
             hyp_content["score"] = score
     json_saving(config.output_path + "/dev.MBR.json", output_json)
-
-
+    
 
     logging.info(f"Running MBR on test set ...")
     print("Running MBR on test set ...")
