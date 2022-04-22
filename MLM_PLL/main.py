@@ -24,10 +24,13 @@ class MyDataset(Dataset):
         return self.data_set[idx]
         
 
-def collate(batch):
+def collate(batch, for_scoring=False):
     input_ids = []
     attention_mask = []
     labels = []
+    utt_id = []
+    hyp_id = []
+    mask_pos = []
 
     for data in batch:
         input_ids.append(
@@ -39,29 +42,33 @@ def collate(batch):
         labels.append(
             torch.tensor(data["labels"], dtype=torch.long)
         )
-    
+        if for_scoring:
+            utt_id.append(data["utt_id"])
+            hyp_id.append(data["hyp_id"])
+            mask_pos.append(data["mask_pos"])
+
     input_ids = pad_sequence(input_ids, batch_first=True)
     attention_mask = pad_sequence(attention_mask, batch_first=True)
     labels = pad_sequence(labels, batch_first=True)
 
-    return input_ids, attention_mask, labels
+    return input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos
 
-def set_dataloader(config, dataset, for_train=False):
-    if for_train:
+def set_dataloader(config, dataset, for_scoring=False):
+    if for_scoring:
         shuffle=config.shuffle
     else:
         shuffle=False
 
     dataloader = DataLoader(
         dataset=dataset,
-        collate_fn=collate,
+        collate_fn=collate(for_scoring),
         batch_size=config.batch_size,
         num_workers=config.num_worker,
         shuffle=shuffle
     )
     return dataloader
 
-def run_one_epoch(config, model, dataloader, train_mode: bool):
+def run_one_epoch(config, model, dataloader, output_score, train_mode: bool):
     if train_mode:
         model.train()
         optimizer = optim.AdamW(model.parameters(), lr=config.lr)
@@ -71,7 +78,7 @@ def run_one_epoch(config, model, dataloader, train_mode: bool):
 
     epoch_loss = 0
     loop = tqdm(enumerate(dataloader), total=len(dataloader))
-    for _, (input_ids, attention_mask, labels) in loop:
+    for _, (input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos) in loop:
         input_ids =input_ids.to(config.device)
         attention_masks = attention_mask.to(config.device)
         labels = attention_mask.to(config.device)
@@ -88,6 +95,13 @@ def run_one_epoch(config, model, dataloader, train_mode: bool):
                 output.loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
+            else:
+                token_logits = output.logits[range(len(output.logits)), mask_pos, :]
+                token_score = token_logits.log_softmax(dim=-1)
+                masked_token_ids = labels[mask_pos]
+                token_score[range(len(token_score)), masked_token_ids]
+                for u_id, h_id, s in utt_id, hyp_id, token_score:
+                    output_score[u_id][h_id] = s
 
         epoch_loss += output.loss.item()
 
@@ -101,8 +115,8 @@ def mlm_finetune_bert(config):
         open(config.dev_data_path, "r", encoding="utf-8")
     ))
 
-    train_loader = set_dataloader(config.dataloader, train_set, True)
-    dev_loader = set_dataloader(config.dataloader, dev_set, False)
+    train_loader = set_dataloader(config.dataloader, train_set, False)
+    dev_loader = set_dataloader(config.dataloader, dev_set, True)
 
     model = BertForMaskedLM.from_pretrained(config.model.bert)
     model = model.to(config.device)
@@ -117,6 +131,7 @@ def mlm_finetune_bert(config):
             config,
             model,
             train_loader,
+            None,
             train_mode=True
         )
         print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
@@ -125,6 +140,7 @@ def mlm_finetune_bert(config):
             config,
             model,
             dev_loader,
+            None,
             train_mode=False
         )
         print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
@@ -135,9 +151,48 @@ def mlm_finetune_bert(config):
             {"train": train_loss_record, "dev": dev_loss_record}
         )
 
-
 def pll_bert_scoring(config):
-    return
+    dev_json = json.load(
+        open(config.dev_data_path, "r", encoding="utf-8")
+    )
+    dev_set = MyDataset(dev_json)
+
+    test_json = json.load(
+        open(config.test_data_path, "r", encoding="utf-8")
+    )
+    test_set = MyDataset(test_json)
+
+    dev_loader = set_dataloader(config.dataloader, dev_set, True)
+    test_loader = set_dataloader(config.dataloader, test_set, True)
+
+    model = BertForMaskedLM.from_pretrained(config.model.bert)
+    checkpoint = torch.load(config.checkpoint_path)
+    model = model.load_state_dict(checkpoint).to(config.device)
+
+    for data in dev_json:
+        output_score[data["utt_id"]] = {}
+        output_score[data["utt_id"]][data["hyp_id"]] = 0
+    output_score = run_one_epoch(
+        config,
+        model,
+        dev_loader,
+        output_score,
+        train_mode=False
+    )
+    json_saving(config.output_path + "dev_lm.json", output_score)
+
+    output_score = {}
+    for data in test_json:
+        output_score[data["utt_id"]] = {}
+        output_score[data["utt_id"]][data["hyp_id"]] = 0
+    output_score = run_one_epoch(
+        config,
+        model,
+        test_loader,
+        output_score,
+        train_mode=False
+    )
+    json_saving(config.output_path + "test_lm.json", output_score)
 
 
 if __name__ == "__main__":
