@@ -25,7 +25,7 @@ class MyDataset(Dataset):
         return self.data_set[idx]
         
 
-def collate(batch, for_scoring=False):
+def collate(batch):
     input_ids = []
     attention_mask = []
     labels = []
@@ -42,10 +42,17 @@ def collate(batch, for_scoring=False):
         )
         labels.append(
             torch.tensor(data["labels"], dtype=torch.long)
-        )
+        )      
         utt_id.append(data["utt_id"])
         hyp_id.append(data["hyp_id"])
         mask_pos.append(data["mask_pos"])
+
+    input_ids = pad_sequence(input_ids, batch_first=True)
+    attention_mask = pad_sequence(attention_mask, batch_first=True)
+    labels = pad_sequence(labels, batch_first=True)
+
+    return input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos
+
 
 def set_dataloader(config, dataset, for_scoring=False):
     if not for_scoring:
@@ -55,14 +62,14 @@ def set_dataloader(config, dataset, for_scoring=False):
 
     dataloader = DataLoader(
         dataset=dataset,
-        collate_fn=collate(for_scoring),
+        collate_fn=collate,
         batch_size=config.batch_size,
         num_workers=config.num_worker,
         shuffle=shuffle
     )
     return dataloader
 
-def run_one_epoch(config, model, dataloader, output_score, train_mode: bool, scoring: False):
+def run_one_epoch(config, model, dataloader, output_score=None, train_mode=True, do_scoring=False):
     if train_mode:
         model.train()
         optimizer = optim.AdamW(model.parameters(), lr=config.lr)
@@ -73,7 +80,7 @@ def run_one_epoch(config, model, dataloader, output_score, train_mode: bool, sco
     epoch_loss = 0
     loop = tqdm(enumerate(dataloader), total=len(dataloader))
     for _, (input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos) in loop:
-        input_ids =input_ids.to(config.device)
+        input_ids = input_ids.to(config.device)
         attention_masks = attention_mask.to(config.device)
         labels = labels.to(config.device)
 
@@ -89,9 +96,10 @@ def run_one_epoch(config, model, dataloader, output_score, train_mode: bool, sco
                 output.loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
-            else:
+            if do_scoring:
                 token_logits = output.logits[range(len(output.logits)), mask_pos, :]
                 token_score = token_logits.log_softmax(dim=-1)
+                #print(token_logits.softmax(dim=-1))
                 masked_token_ids = labels[range(len(labels)), mask_pos]
                 token_score = token_score[range(len(token_score)), masked_token_ids].tolist()
                 for u_id, h_id, s in zip(utt_id, hyp_id, token_score):
@@ -99,7 +107,7 @@ def run_one_epoch(config, model, dataloader, output_score, train_mode: bool, sco
 
         epoch_loss += output.loss.item()
 
-    if not scoring:
+    if not do_scoring:
         return epoch_loss / len(dataloader)
     else:
         return output_score
@@ -126,20 +134,22 @@ def mlm_finetune_bert(config):
         print("Epoch {}/{}".format(epoch_id, config.epoch))
         
         train_loss_record[epoch_id-1] = run_one_epoch(
-            config,
-            model,
-            train_loader,
-            None,
-            train_mode=True
+            config=config,
+            model=model,
+            output_score=None,
+            dataloader=train_loader,
+            train_mode=True,
+            do_scoring=False
         )
         print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
 
         dev_loss_record[epoch_id-1] = run_one_epoch(
-            config,
-            model,
-            dev_loader,
-            None,
-            train_mode=False
+            config=config,
+            model=model,
+            output_score=None,
+            dataloader=dev_loader,
+            train_mode=False,
+            do_scoring=False
         )
         print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
 
@@ -175,12 +185,12 @@ def pll_bert_scoring(config):
         output_score[data["utt_id"]][data["hyp_id"]] = 0
 
     output_score = run_one_epoch(
-        config,
-        model,
-        dev_loader,
-        output_score,
+        config=config,
+        model=model,
+        dataloader=dev_loader,
+        output_score=output_score,
         train_mode=False,
-        scoring=True
+        do_scoring=True
     )
     json_saving(config.output_path + "dev_lm.json", output_score)
 
@@ -191,12 +201,12 @@ def pll_bert_scoring(config):
         output_score[data["utt_id"]][data["hyp_id"]] = 0
 
     output_score = run_one_epoch(
-        config,
-        model,
-        test_loader,
-        output_score,
+        config=config,
+        model=model,
+        dataloader=test_loader,
+        output_score=output_score,
         train_mode=False,
-        scoring=True
+        do_scoring=True
     )
     json_saving(config.output_path + "test_lm.json", output_score)
 

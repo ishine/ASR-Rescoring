@@ -9,10 +9,10 @@ test_data_path: "preprocessed_data/for_scoring/test.json"
 checkpoint_path: "result/checkpoint_1.pth"
 output_path: "result/_"
 
-num_of_data: 10
+num_of_data: 12
 
 dataloader:
-  batch_size: 128
+  batch_size: 32
   num_worker: 5
 
 model:
