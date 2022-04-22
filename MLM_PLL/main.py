@@ -25,7 +25,7 @@ class MyDataset(Dataset):
         return self.data_set[idx]
         
 
-def collate(batch):
+def collate(batch, for_scoring=False):
     input_ids = []
     attention_mask = []
     labels = []
@@ -43,16 +43,9 @@ def collate(batch):
         labels.append(
             torch.tensor(data["labels"], dtype=torch.long)
         )
-
         utt_id.append(data["utt_id"])
         hyp_id.append(data["hyp_id"])
         mask_pos.append(data["mask_pos"])
-
-    input_ids = pad_sequence(input_ids, batch_first=True)
-    attention_mask = pad_sequence(attention_mask, batch_first=True)
-    labels = pad_sequence(labels, batch_first=True)
-
-    return input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos
 
 def set_dataloader(config, dataset, for_scoring=False):
     if not for_scoring:
@@ -62,7 +55,7 @@ def set_dataloader(config, dataset, for_scoring=False):
 
     dataloader = DataLoader(
         dataset=dataset,
-        collate_fn=collate,
+        collate_fn=collate(for_scoring),
         batch_size=config.batch_size,
         num_workers=config.num_worker,
         shuffle=shuffle

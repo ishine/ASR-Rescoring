@@ -39,8 +39,6 @@ def find_best_weight(am, lm, hyps, ref):
         if error < best_cer:
             best_cer = error
             best_weight = weight
-            print(best_cer)
-            print(best_weight)
 
     return best_weight, best_cer
 
@@ -52,12 +50,8 @@ def rescore(weight, hyps_len, am, lm):
     return final_score
 
 def get_highest_score_hyp(final_score, hyps):
-    print(final_score)
-    print(hyps)
     max_score_hyp_index = np.argmax(final_score, axis=-1)
-    print(max_score_hyp_index)
     best_hyp = [ht[index] for ht, index in zip(hyps, max_score_hyp_index)]
-    print(best_hyp)
     return best_hyp
 
 
@@ -78,22 +72,22 @@ if __name__ == "__main__":
 
     dev_am = dict_to_list(json.load(
         open(config.dev_am_path, "r", encoding="utf-8")
-    ))[:10]
+    ))
     dev_lm = dict_to_list(json.load(
         open(config.dev_lm_path, "r", encoding="utf-8")
-    ))[:10]
+    ))
     dev_hyps = dict_to_list(json.load(
         open(config.dev_hyps_text_path, "r", encoding="utf-8")
-    ))[:10]
+    ))
     dev_ref = dict_to_list(json.load(
         open(config.dev_ref_text_path, "r", encoding="utf-8")
-    ))[:10]
+    ))
     best_weight, best_cer = find_best_weight(dev_am, dev_lm, dev_hyps, dev_ref)
     logging.info("best_weight: " + str(best_weight))
     logging.info("dev cer: " + str(best_cer))
     print("best_weight: ", best_weight)
     print("dev cer: ", best_cer)
-'''
+
     test_am = dict_to_list(json.load(
         open(config.test_am_path, "r", encoding="utf-8")
     ))
@@ -119,4 +113,4 @@ if __name__ == "__main__":
     cer = cer(test_ref, predict_hyps)
     logging.info("test cer: " + str(cer))
     print("test cer: ", cer)
-'''
+
