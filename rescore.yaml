@@ -1,0 +1,10 @@
+dev_am_path: "espnet_data/alfred/dev/hyps_score.json"
+dev_lm_path: "MLM_PLL/result/dev_lm.json"
+dev_hyps_text_path: "espnet_data/alfred/dev/hyps_text.json"
+dev_ref_text_path: "espnet_data/alfred/dev/ref_text.json"
+
+
+test_am_path: "espnet_data/alfred/test/hyps_score.json"
+test_lm_path: "MLM_PLL/result/test_lm.json"
+test_hyps_text_path: "espnet_data/alfred/test/hyps_text.json"
+test_ref_text_path: "espnet_data/alfred/test/ref_text.json"
