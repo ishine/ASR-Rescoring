@@ -1,118 +1,52 @@
 import sys
+from typing import Dict, List
 sys.path.append("..")
 import json
 from tqdm import tqdm
 from transformers import BertTokenizer 
 
-from util.saving import json_saving
+def get_feature(config, data_paths, require_features):
 
-def get_feature(raw_data, require_feature):
-    output = {}
-    data_count = 0
+    bert_tokenizer = BertTokenizer.from_pretrained(config.model.bert)
 
-    for utt_id, hyps in tqdm(raw_data.items()):
-        for hyp_id, hyp_content in hyps.items():
+    feature_set = {}
+    for path, feature in zip(data_paths, require_features):
+        feature_set[feature] = json.load(open(path, "r", encoding="utf-8"))
 
-            single_data = {"utt_id": utt_id, "hyp_id": hyp_id}
+    output = []
+    for feature in feature_set[0]:
+        for utt_id, hyps in feature.items():
+            for hyp_id, _ in hyps.items():
+                output.append({"utt_id": utt_id, "hyp_id": hyp_id})
 
-            if require_feature == "hyps_token_ids":
-                token_seq = bert_tokenizer.tokenize(hyp_content)
-                single_data["hyps_token_ids"] = \
-                    bert_tokenizer.convert_tokens_to_ids(
-                        ["[CLS]"] + token_seq + ["[SEP]"]
-                    )
+    for row in tqdm(output):
+        for feature, feature_json in feature_set.items():
+            utt_id = row["utt_id"]
+            hyp_id = row["hyp_id"]
 
-            elif require_feature == "hyps_am_score":
-                single_data["hyps_am_score"] = hyp_content
+            if feature == "hyps_token_ids":
+                token_seq = bert_tokenizer.tokenize(feature_json[utt_id][hyp_id])
+                row.update({
+                    "hyps_token_ids": 
+                        bert_tokenizer.convert_tokens_to_ids(
+                            ["[CLS]"] + token_seq + ["[SEP]"]
+                        ),
+                    "attention_masks": [1] * (len(token_seq) + 2)
+                })
 
-            elif require_feature == "hyps_cer":
-                single_data["hyps_cer"] = hyp_content
+            elif feature == "hyps_am_score":
+                row.update({
+                        "hyps_am_score": feature_json[utt_id][hyp_id]
+                })
 
-            elif require_feature == "mlm_pll_score":
-                single_data["mlm_pll_score"] = hyp_content
+            elif feature == "hyps_cer":
+                row.update({
+                        "hyps_cer": feature_json[utt_id][hyp_id]
+                })
 
-            output[data_count] = single_data
-            data_count += 1
+            elif feature == "mlm_pll_score":
+                row.update({
+                        "mlm_pll_score": feature_json[utt_id][hyp_id]
+                })
 
     return output
-
-
-if __name__ == "__main__":
-    bert_tokenizer = BertTokenizer.from_pretrained("bert-base-chinese")
-
-    jobs = [{
-            "task": "for_training", 
-            "feature_in_path": [
-                "../espnet_data/alfred/train/hyps_text.json",
-                "../espnet_data/alfred/train/hyps_score.json"
-            ],
-            "require_features": [
-                "hyps_token_ids",
-                "hyps_am_score"
-            ],
-            "label_in_path": [
-                "../MLM_PLL/result",
-                "../espnet_data/alfred/train/hyps_cer.json"
-            ],
-            "label": [
-                "mlm_pll_score",
-                "hyps_cer"
-            ],
-            "out": "preprocessed_data/for_training/train"
-        }, {
-            "task": "for_training",
-            "feature_in_path": [
-                "../espnet_data/alfred/dev/hyps_text.json",
-                "../espnet_data/alfred/dev/hyps_score.json"
-            ],
-            "require_features": [
-                "hyps_token_ids",
-                "hyps_am_score"
-            ],
-            "label_in_path": [
-                "../MLM_PLL/result",
-                "../espnet_data/alfred/dev/hyps_cer.json"
-            ],
-            "label": [
-                "mlm_pll_score",
-                "hyps_cer"
-            ],
-            "out": "preprocessed_data/for_training/dev"
-        }, {
-            "task": "for_scoring",
-            "feature_in_path": [
-                "../espnet_data/alfred/dev/hyps_text.json",
-                "../espnet_data/alfred/dev/hyps_score.json",
-            ],
-            "require_features": [
-                "hyps_token_ids",
-                "hyps_am_score",
-            ],
-            "out": "preprocessed_data/for_scoring/dev"
-        }, {
-            "task": "for_scoring",
-            "feature_in_path": [
-                "../espnet_data/alfred/test/hyps_text.json",
-                "../espnet_data/alfred/test/hyps_score.json",
-            ],
-            "require_features": [
-                "hyps_token_ids",
-                "hyps_am_score",
-            ],
-            "out": "preprocessed_data/for_scoring/test"
-        }
-    ]
-    
-    for job_id, job in enumerate(jobs):
-        print(f"job {job_id}, total: {len(job)}")
-
-        for path, feature in zip(job["feature_in_path"], job["require_features"]):
-            raw_data = json.load(open(path, "r", encoding="utf-8"))
-            output = get_feature(raw_data, feature)
-            json_saving(job["out"] + "/" + feature + ".json", output)
-
-        if job["task"] == "for_training":
-            for path, label in zip(job["label_in_path"], job["label"]):
-                raw_data = json.load(open(path, "r", encoding="utf-8"))
-                output = get_feature(raw_data, label)
-                json_saving(job["out"] + "/" + label + ".json", output)
