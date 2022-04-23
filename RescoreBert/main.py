@@ -14,10 +14,13 @@ from tqdm import tqdm
 from util.arg_parser import ArgParser
 from util.saving import model_saving, json_saving
 
-class MyDataset(Dataset):
-    def __init__(self, data_set: List):
-        self.data_set = data_set
 
+class MyDataset(Dataset):
+    def __init__(self, **features):
+        self.data_set = []
+        for feature in features:
+            for f in feature:
+                
     def __len__(self):
         return len(self.data_set)
     
@@ -54,12 +57,7 @@ def collate(batch):
     return input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos
 
 
-def set_dataloader(config, dataset, for_scoring=False):
-    if not for_scoring:
-        shuffle=config.shuffle
-    else:
-        shuffle=False
-
+def set_dataloader(config, dataset, shuffle=False):
     dataloader = DataLoader(
         dataset=dataset,
         collate_fn=collate,
@@ -114,103 +112,38 @@ def run_one_epoch(config, model, dataloader, output_score=None, train_mode=True,
         return output_score
 
 
-def mlm_finetune_bert(config):
-    train_set = MyDataset(json.load(
-        open(config.train_data_path, "r", encoding="utf-8")
-    ))[:config.num_of_data]
-    dev_set = MyDataset(json.load(
-        open(config.dev_data_path, "r", encoding="utf-8")
-    ))[:config.num_of_data]
+def train(config):
+    train_hyps_token_ids = json.load(
+        open(config.train_data_path + "/hyps_token_ids.json", "r", encoding="utf-8")
+    )[:config.num_of_data]
 
-    train_loader = set_dataloader(config.dataloader, train_set, False)
-    dev_loader = set_dataloader(config.dataloader, dev_set, True)
+    train_mlm_pll_score = json.load(
+        open(config.train_data_path + "/mlm_pll_score.json", "r", encoding="utf-8")
+    )[:config.num_of_data]
 
-    model = BertForMaskedLM.from_pretrained(config.model.bert)
-    model = model.to(config.device)
+    train_set = MyDataset()
 
-    train_loss_record = [0]*config.epoch
-    dev_loss_record = [0]*config.epoch
+    if config.method == "MD_MWED":
+        train_set = MyDataset(json.load(
+            open(config.train_data_path, "r", encoding="utf-8")
+        ))[:config.num_of_data]
+        dev_set = MyDataset(json.load(
+            open(config.dev_data_path, "r", encoding="utf-8")
+        ))[:config.num_of_data]
 
-    for epoch_id in range(1, config.epoch+1):
-        print("Epoch {}/{}".format(epoch_id, config.epoch))
+    elif config.method == "MD_MWER":
+        train_set = MyDataset(json.load(
+            open(config.train_data_path, "r", encoding="utf-8")
+        ))[:config.num_of_data]
+        dev_set = MyDataset(json.load(
+            open(config.dev_data_path, "r", encoding="utf-8")
+        ))[:config.num_of_data]
         
-        train_loss_record[epoch_id-1] = run_one_epoch(
-            config=config,
-            model=model,
-            output_score=None,
-            dataloader=train_loader,
-            train_mode=True,
-            do_scoring=False
-        )
-        print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
-
-        dev_loss_record[epoch_id-1] = run_one_epoch(
-            config=config,
-            model=model,
-            output_score=None,
-            dataloader=dev_loader,
-            train_mode=False,
-            do_scoring=False
-        )
-        print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
-
-        model_saving(config.output_path, model.state_dict(), epoch_id)
-        json_saving(
-            config.output_path + "/loss.json",
-            {"train": train_loss_record, "dev": dev_loss_record}
-        )
+    return
 
 
-def pll_bert_scoring(config):
-    dev_json = json.load(
-        open(config.dev_data_path, "r", encoding="utf-8")
-    )[:config.num_of_data]
-    dev_set = MyDataset(dev_json)
-
-    test_json = json.load(
-        open(config.test_data_path, "r", encoding="utf-8")
-    )[:config.num_of_data]
-    test_set = MyDataset(test_json)
-
-    dev_loader = set_dataloader(config.dataloader, dev_set, True)
-    test_loader = set_dataloader(config.dataloader, test_set, True)
-
-    model = BertForMaskedLM.from_pretrained(config.model.bert)
-    checkpoint = torch.load(config.checkpoint_path)
-    model.load_state_dict(checkpoint)
-    model = model.to(config.device)
-
-    output_score = {}
-    for data in dev_json:
-        if data["hyp_id"] == "hyp_1":
-            output_score[data["utt_id"]] = {}
-        output_score[data["utt_id"]][data["hyp_id"]] = 0
-
-    output_score = run_one_epoch(
-        config=config,
-        model=model,
-        dataloader=dev_loader,
-        output_score=output_score,
-        train_mode=False,
-        do_scoring=True
-    )
-    json_saving(config.output_path + "dev_lm.json", output_score)
-
-    output_score = {}
-    for data in test_json:
-        if data["hyp_id"] == "hyp_1":
-            output_score[data["utt_id"]] = {}
-        output_score[data["utt_id"]][data["hyp_id"]] = 0
-
-    output_score = run_one_epoch(
-        config=config,
-        model=model,
-        dataloader=test_loader,
-        output_score=output_score,
-        train_mode=False,
-        do_scoring=True
-    )
-    json_saving(config.output_path + "test_lm.json", output_score)
+def score(config):
+    return
 
 
 if __name__ == "__main__":
@@ -222,6 +155,6 @@ if __name__ == "__main__":
         torch.cuda.manual_seed(config.seed)
 
     if config.task == "training":
-        mlm_finetune_bert(config)
+        train(config)
     elif config.task == "scoring":
-        pll_bert_scoring(config)
+        score(config)

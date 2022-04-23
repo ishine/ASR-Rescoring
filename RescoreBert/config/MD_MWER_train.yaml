@@ -1,0 +1,27 @@
+task: training
+
+method: "MD_MWER"
+
+seed: 10
+
+lr: 0.00001
+epoch: 2
+device: "cuda:0"
+
+train_data_path: "preprocessed_data/for_training/train" 
+dev_data_path: "preprocessed_data/for_training/dev"
+output_path: "result/"
+
+num_of_data: 99999999
+
+dataloader:
+  shuffle: False
+  batch_size: 32
+  num_worker: 5
+
+model:
+  bert: "bert-base-chinese"
+
+resume: 
+  start_from: 
+  checkpoint_path:
