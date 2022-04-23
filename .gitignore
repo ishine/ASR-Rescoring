@@ -15,8 +15,12 @@
 
 /T-brain
 
+/src
+
 /result
 
-/src/test.py
+/config
+
+/result
 
 __pycache__
