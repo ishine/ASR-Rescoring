@@ -2,13 +2,13 @@ import sys
 sys.path.append("..")
 import json
 import logging
-from typing import List
+from typing import Dict, List
 
 import torch
 import torch.optim as optim
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertForMaskedLM
+from transformers import BertModel
 from tqdm import tqdm
 
 from util.arg_parser import ArgParser
@@ -16,45 +16,22 @@ from util.saving import model_saving, json_saving
 
 
 class MyDataset(Dataset):
-    def __init__(self, **features):
-        self.data_set = []
-        for feature in features:
-            for f in feature:
-                
+    def __init__(self, data_sets: List[Dict]):
+        self.data_sets = data_sets
+
     def __len__(self):
-        return len(self.data_set)
+        return len(self.data_sets[0])
     
     def __getitem__(self, idx):
-        return self.data_set[idx]
-        
+        return [data_set[idx] for data_set in self.data_sets]
+
 
 def collate(batch):
-    input_ids = []
-    attention_mask = []
-    labels = []
-    utt_id = []
-    hyp_id = []
-    mask_pos = []
 
     for data in batch:
-        input_ids.append(
-            torch.tensor(data["input_ids"], dtype=torch.long)
-        )
-        attention_mask.append(
-            torch.tensor(data["attention_masks"], dtype=torch.long)
-        )
-        labels.append(
-            torch.tensor(data["labels"], dtype=torch.long)
-        )      
-        utt_id.append(data["utt_id"])
-        hyp_id.append(data["hyp_id"])
-        mask_pos.append(data["mask_pos"])
+        print(data)
 
-    input_ids = pad_sequence(input_ids, batch_first=True)
-    attention_mask = pad_sequence(attention_mask, batch_first=True)
-    labels = pad_sequence(labels, batch_first=True)
-
-    return input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos
+    return 
 
 
 def set_dataloader(config, dataset, shuffle=False):
@@ -68,8 +45,8 @@ def set_dataloader(config, dataset, shuffle=False):
     return dataloader
 
 
-def run_one_epoch(config, model, dataloader, output_score=None, train_mode=True, do_scoring=False):
-    if train_mode:
+def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True, do_scoring=False):
+    if grad_update:
         model.train()
         optimizer = optim.AdamW(model.parameters(), lr=config.lr)
         optimizer.zero_grad()
@@ -78,31 +55,20 @@ def run_one_epoch(config, model, dataloader, output_score=None, train_mode=True,
 
     epoch_loss = 0
     loop = tqdm(enumerate(dataloader), total=len(dataloader))
-    for _, (input_ids, attention_mask, labels, utt_id, hyp_id, mask_pos) in loop:
-        input_ids = input_ids.to(config.device)
-        attention_masks = attention_mask.to(config.device)
-        labels = labels.to(config.device)
+    for _, data in loop:
 
-        with torch.set_grad_enabled(train_mode):
+        with torch.set_grad_enabled(grad_update):
             output = model(
-                input_ids=input_ids,
-                attention_mask=attention_masks,
-                labels=labels,
                 return_dict=True
             )
 
-            if train_mode:
+            if grad_update:
                 output.loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
+
             if do_scoring:
-                token_logits = output.logits[range(len(output.logits)), mask_pos, :]
-                token_score = token_logits.log_softmax(dim=-1)
-                #print(token_logits.softmax(dim=-1))
-                masked_token_ids = labels[range(len(labels)), mask_pos]
-                token_score = token_score[range(len(token_score)), masked_token_ids].tolist()
-                for u_id, h_id, s in zip(utt_id, hyp_id, token_score):
-                    output_score[u_id][h_id] += s
+                pass
 
         epoch_loss += output.loss.item()
 
@@ -115,31 +81,61 @@ def run_one_epoch(config, model, dataloader, output_score=None, train_mode=True,
 def train(config):
     train_hyps_token_ids = json.load(
         open(config.train_data_path + "/hyps_token_ids.json", "r", encoding="utf-8")
-    )[:config.num_of_data]
-
+    )
     train_mlm_pll_score = json.load(
         open(config.train_data_path + "/mlm_pll_score.json", "r", encoding="utf-8")
-    )[:config.num_of_data]
+    )
 
-    train_set = MyDataset()
+    train_set = MyDataset([
+        train_hyps_token_ids,
+        train_mlm_pll_score
+    ])
+
+    train_loader = set_dataloader(config.dataloader, train_set, shuffle=False)
+    dev_loader = set_dataloader(config.dataloader, dev_loader, shuffle=False)
+
 
     if config.method == "MD_MWED":
-        train_set = MyDataset(json.load(
-            open(config.train_data_path, "r", encoding="utf-8")
-        ))[:config.num_of_data]
-        dev_set = MyDataset(json.load(
-            open(config.dev_data_path, "r", encoding="utf-8")
-        ))[:config.num_of_data]
+        pass
 
     elif config.method == "MD_MWER":
-        train_set = MyDataset(json.load(
-            open(config.train_data_path, "r", encoding="utf-8")
-        ))[:config.num_of_data]
-        dev_set = MyDataset(json.load(
-            open(config.dev_data_path, "r", encoding="utf-8")
-        ))[:config.num_of_data]
+        pass
+
+
+    model = BertModel.from_pretrained(config.model.bert)
+    model = model.to(config.device)
+
+    train_loss_record = [0]*config.epoch
+    dev_loss_record = [0]*config.epoch
+    
+    for epoch_id in range(1, config.epoch+1):
+        print("Epoch {}/{}".format(epoch_id, config.epoch))
         
-    return
+        train_loss_record[epoch_id-1] = run_one_epoch(
+            config=config,
+            model=model,
+            dataloader=train_loader,
+            output_score=None,
+            grad_update=True,
+            do_scoring=False
+        )
+        print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
+
+        dev_loss_record[epoch_id-1] = run_one_epoch(
+            config=config,
+            model=model,
+            dataloader=dev_loader,
+            output_score=None,
+            grad_update=True,
+            do_scoring=False
+        )
+        print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
+
+        model_saving(config.output_path, model.state_dict(), epoch_id)
+        json_saving(
+            config.output_path + "/loss.json",
+            {"train": train_loss_record, "dev": dev_loss_record}
+        )
 
 
 def score(config):

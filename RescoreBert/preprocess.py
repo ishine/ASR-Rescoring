@@ -7,8 +7,9 @@ from transformers import BertTokenizer
 from util.saving import json_saving
 
 def get_feature(raw_data, require_feature):
-    output = []
-    
+    output = {}
+    data_count = 0
+
     for utt_id, hyps in tqdm(raw_data.items()):
         for hyp_id, hyp_content in hyps.items():
 
@@ -30,7 +31,8 @@ def get_feature(raw_data, require_feature):
             elif require_feature == "mlm_pll_score":
                 single_data["mlm_pll_score"] = hyp_content
 
-            output.append(single_data)
+            output[data_count] = single_data
+            data_count += 1
 
     return output
 
