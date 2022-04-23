@@ -162,6 +162,11 @@ def mlm_finetune_bert(config):
 
 
 def pll_bert_scoring(config):
+    train_json = json.load(
+        open(config.train_data_path, "r", encoding="utf-8")
+    )[:config.num_of_data]
+    train_set = MyDataset(train_json)
+
     dev_json = json.load(
         open(config.dev_data_path, "r", encoding="utf-8")
     )[:config.num_of_data]
@@ -172,6 +177,7 @@ def pll_bert_scoring(config):
     )[:config.num_of_data]
     test_set = MyDataset(test_json)
 
+    train_loader = set_dataloader(config.dataloader, train_set, True)
     dev_loader = set_dataloader(config.dataloader, dev_set, True)
     test_loader = set_dataloader(config.dataloader, test_set, True)
 
@@ -180,6 +186,23 @@ def pll_bert_scoring(config):
     model.load_state_dict(checkpoint)
     model = model.to(config.device)
 
+    output_score = {}
+    for data in train_json:
+        if data["hyp_id"] == "hyp_1":
+            output_score[data["utt_id"]] = {}
+        output_score[data["utt_id"]][data["hyp_id"]] = 0
+
+    output_score = run_one_epoch(
+        config=config,
+        model=model,
+        dataloader=train_loader,
+        output_score=output_score,
+        train_mode=False,
+        do_scoring=True
+    )
+    json_saving(config.output_path + "train_lm.json", output_score)
+
+'''
     output_score = {}
     for data in dev_json:
         if data["hyp_id"] == "hyp_1":
@@ -196,6 +219,7 @@ def pll_bert_scoring(config):
     )
     json_saving(config.output_path + "dev_lm.json", output_score)
 
+
     output_score = {}
     for data in test_json:
         if data["hyp_id"] == "hyp_1":
@@ -211,7 +235,7 @@ def pll_bert_scoring(config):
         do_scoring=True
     )
     json_saving(config.output_path + "test_lm.json", output_score)
-
+'''
 
 if __name__ == "__main__":
     arg_parser = ArgParser()

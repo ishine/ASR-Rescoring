@@ -43,6 +43,10 @@ if __name__ == "__main__":
             "out": "preprocessed_data/for_training/dev.json"
         }, {
             "task": "for_scoring",
+            "in": "../espnet_data/alfred/train/hyps_text.json",
+            "out": "preprocessed_data/for_scoring/train.json"
+        }, {
+            "task": "for_scoring",
             "in": "../espnet_data/alfred/dev/hyps_text.json",
             "out": "preprocessed_data/for_scoring/dev.json"
         }, {
