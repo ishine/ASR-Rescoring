@@ -16,6 +16,6 @@ class RescoreBert(torch.nn.Module):
             attention_mask=attention_mask,
             return_dict=True
         )
-        cls = bert_output.logits[:, 0, :]
+        cls = bert_output.last_hidden_state[:, 0, :]
         lm_score = self.linear(cls)
         return lm_score

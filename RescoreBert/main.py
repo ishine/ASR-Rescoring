@@ -1,9 +1,8 @@
 import sys
-
-from matplotlib.pyplot import get
 sys.path.append("..")
 import json
 import logging
+from functools import partial
 from typing import Dict, List
 
 import torch
@@ -43,15 +42,13 @@ def collate(batch, config):
         attention_masks.append(
             torch.tensor(data["attention_masks"], dtype=torch.long)
         )
-        mlm_pll_score.append(
-            torch.tensor(data["mlm_pll_score"], dtype=torch.long)
-        )      
+        mlm_pll_score.append(data["mlm_pll_score"])
         utt_id.append(data["utt_id"])
         hyp_id.append(data["hyp_id"])
 
     input_ids = pad_sequence(input_ids, batch_first=True)
     attention_masks = pad_sequence(attention_masks, batch_first=True)
-    labels = pad_sequence(labels, batch_first=True)
+    mlm_pll_score = torch.tensor(mlm_pll_score, dtype=torch.float)
 
     if config.method == "MD":
         return {
@@ -66,9 +63,9 @@ def collate(batch, config):
 def set_dataloader(config, dataset, shuffle=False):
     dataloader = DataLoader(
         dataset=dataset,
-        collate_fn=collate(config=config),
-        batch_size=config.batch_size,
-        num_workers=config.num_worker,
+        collate_fn=partial(collate, config=config),
+        batch_size=config.dataloader.batch_size,
+        num_workers=config.dataloader.num_worker,
         shuffle=shuffle
     )
     return dataloader
@@ -90,14 +87,13 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
             predict_lm_score = model(
                 batch["input_ids"].to(config.device),
                 batch["attention_masks"].to(config.device),
-                return_dict=True
             )
 
             if grad_update:
                 batch_loss = 0
 
                 mse_loss_fn = torch.nn.MSELoss(reduction="sum")
-                MD_loss = mse_loss_fn(predict_lm_score, batch["mlm_pll_score"])
+                MD_loss = mse_loss_fn(predict_lm_score, batch["mlm_pll_score"].to(config.device))
 
                 if config.method == "MD":
                     batch_loss = MD_loss
@@ -136,17 +132,17 @@ def train(config):
         config,
         data_paths=config.train_feature_path,
         require_features=config.train_feature
-    )[:config.num_of_data]
+    )
     train_set = MyDataset(train_features)
-    train_loader = set_dataloader(config.dataloader, train_set, shuffle=False)
+    train_loader = set_dataloader(config, train_set, shuffle=False)
 
     dev_features = get_feature(
         config,
         data_paths=config.dev_feature_path,
         require_features=config.dev_feature
-    )[:config.num_of_data]
+    )
     dev_set = MyDataset(dev_features)
-    dev_loader = set_dataloader(config.dataloader, dev_set, shuffle=False)
+    dev_loader = set_dataloader(config, dev_set, shuffle=False)
 
     model = RescoreBert(config.model.bert)
     model = model.to(config.device)

@@ -9,13 +9,17 @@ def get_feature(config, data_paths, require_features):
 
     bert_tokenizer = BertTokenizer.from_pretrained(config.model.bert)
 
+    json_data = json.load(open("/home/chkuo/chkuo/experiment/ASR-Rescoring/MLM_PLL/result/train_lm.json", "r", encoding="utf-8"))
+
     feature_set = {}
     for path, feature in zip(data_paths, require_features):
         feature_set[feature] = json.load(open(path, "r", encoding="utf-8"))
 
     output = []
-    for feature in feature_set[0]:
-        for utt_id, hyps in feature.items():
+    for id, feature in enumerate(feature_set.values()):
+        if id == 1: break
+        for utt_count, (utt_id, hyps) in enumerate(feature.items()):
+            if utt_count == config.max_utt: break
             for hyp_id, _ in hyps.items():
                 output.append({"utt_id": utt_id, "hyp_id": hyp_id})
 

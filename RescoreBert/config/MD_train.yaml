@@ -12,18 +12,18 @@ train_feature:
   - mlm_pll_score
 train_feature_path: 
   - "../espnet_data/alfred/train/hyps_text.json"
-  - "../MLM_PLL/result"
+  - "../MLM_PLL/result/train_lm.json"
 
 dev_feature:
   - hyps_token_ids
   - mlm_pll_score
-dev_data_path: 
+dev_feature_path: 
   - "../espnet_data/alfred/dev/hyps_text.json"
-  - "../MLM_PLL/result"
+  - "../MLM_PLL/result/dev_lm.json"
 
 output_path: "result/"
 
-num_of_data: 99999999
+max_utt: 10
 
 dataloader:
   shuffle: False
