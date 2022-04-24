@@ -184,20 +184,26 @@ def train(config):
     dev_loader = set_dataloader(config, dev_set, shuffle=False)
 
     model = RescoreBert(config.model.bert)
-    resume = False
+
     if config.resume.start_from != None and config.resume.checkpoint_path != None:
+        resume = True
         checkpoint = torch.load(config.checkpoint_path)
         model.load_state_dict(checkpoint)
-        resume = True
+        loss_record = json.load(
+            open(config.output_path + "/loss_.json", "r", encoding="utf-8")
+        )
+        train_loss_record = loss_record["train"]
+        dev_loss_record = loss_record["dev"]
+    else:
+        resume = False
+        train_loss_record = []
+        dev_loss_record = []
     model = model.to(config.device)
-
-    train_loss_record = [0]*config.epoch
-    dev_loss_record = [0]*config.epoch
     
     for epoch_id in range(config.resume.start_from if resume else 1, config.epoch+1):
         print("Epoch {}/{}".format(epoch_id, config.epoch))
         
-        train_loss_record[epoch_id-1] = run_one_epoch(
+        train_loss = run_one_epoch(
             config=config,
             model=model,
             dataloader=train_loader,
@@ -205,9 +211,10 @@ def train(config):
             grad_update=True,
             do_scoring=False
         )
-        print("epoch ", epoch_id, " train loss: ", train_loss_record[epoch_id-1])
+        print("epoch ", epoch_id, " train loss: ", train_loss, "\n")
+        train_loss_record.append(train_loss)
 
-        dev_loss_record[epoch_id-1] = run_one_epoch(
+        dev_loss = run_one_epoch(
             config=config,
             model=model,
             dataloader=dev_loader,
@@ -215,11 +222,12 @@ def train(config):
             grad_update=True,
             do_scoring=False
         )
-        print("epoch ", epoch_id, " dev loss: ", dev_loss_record[epoch_id-1], "\n")
-
+        print("epoch ", epoch_id, " dev loss: ", dev_loss, "\n")
+        dev_loss_record.append(dev_loss)
+        
         model_saving(config.output_path, model.state_dict(), epoch_id)
         json_saving(
-            config.output_path + "/loss.json",
+            config.output_path + "/loss_.json",
             {"train": train_loss_record, "dev": dev_loss_record}
         )
 
