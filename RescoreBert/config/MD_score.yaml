@@ -28,7 +28,7 @@ batch_size: 3
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 10
+max_utt: 999999999
 n_best: 10
 
 dataloader:

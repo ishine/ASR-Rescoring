@@ -29,57 +29,44 @@ class MyDataset(Dataset):
 
 
 def collate(batch, config):
+    utt_id = []
+    hyp_id = []
     input_ids = []
     attention_masks = []
     mlm_pll_score = []
-    utt_id = []
-    hyp_id = []
+    hyps_am_score = []
+    hyps_cer = []
 
     for data in batch:
+        utt_id.append(data["utt_id"])
+        hyp_id.append(data["hyp_id"])
         input_ids.append(
             torch.tensor(data["hyps_token_ids"], dtype=torch.long)
         )
         attention_masks.append(
             torch.tensor(data["attention_masks"], dtype=torch.long)
         )
-        mlm_pll_score.append(data["mlm_pll_score"])
-        utt_id.append(data["utt_id"])
-        hyp_id.append(data["hyp_id"])
+        if config.task == "training":
+            mlm_pll_score.append(data["mlm_pll_score"])
+            if config.method in ["MD_MWER","MD_MWED"]:
+                hyps_am_score.append(data["hyps_am_score"])
+                hyps_cer.append(data["hyps_cer"])
 
     input_ids = pad_sequence(input_ids, batch_first=True)
     attention_masks = pad_sequence(attention_masks, batch_first=True)
     mlm_pll_score = torch.tensor(mlm_pll_score, dtype=torch.float)
+    hyps_am_score = torch.tensor(hyps_am_score, dtype=torch.float)
+    hyps_cer = torch.tensor(hyps_cer, dtype=torch.float)
 
-    if config.method == "MD":
-        return {
-            "input_ids": input_ids,
-            "attention_masks": attention_masks,
-            "mlm_pll_score": mlm_pll_score,
-            "utt_id": utt_id,
-            "hyp_id": hyp_id
-        }
-
-    elif config.method in ["MD_MWER", "MD_MWED"]:
-        hyps_am_score = []
-        hyps_cer = []
-
-        for data in batch:
-            if config.method in ["MD_MWER", "MD_MWED"]:
-                hyps_am_score.append(data["hyps_am_score"])
-                hyps_cer.append(data["hyps_cer"])
-
-        hyps_am_score = torch.tensor(hyps_am_score, dtype=torch.float)
-        hyps_cer = torch.tensor(hyps_cer, dtype=torch.float)
-        
-        return{
-            "input_ids": input_ids,
-            "attention_masks": attention_masks,
-            "mlm_pll_score": mlm_pll_score,
-            "hyps_am_score": hyps_am_score,
-            "hyps_cer": hyps_cer,
-            "utt_id": utt_id,
-            "hyp_id": hyp_id
-        }
+    return{
+        "input_ids": input_ids,
+        "attention_masks": attention_masks,
+        "mlm_pll_score": mlm_pll_score,
+        "hyps_am_score": hyps_am_score,
+        "hyps_cer": hyps_cer,
+        "utt_id": utt_id,
+        "hyp_id": hyp_id
+    }
 
 def set_dataloader(config, dataset, shuffle=False):
     dataloader = DataLoader(
@@ -167,15 +154,16 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
                 optimizer.zero_grad()
 
         if do_scoring:
+            for utt_id, hyp_id, lm_score in zip(batch["utt_id"], batch["hyp_id"], predict_lm_score):
             #mix_score = predict_lm_score + batch["hyps_am_score"].to("cpu")
-            output_score[batch["utt_id"]][batch["hyp_id"]] = predict_lm_score.item()
+                output_score[utt_id][hyp_id] = lm_score.item()
+        else:
+            epoch_loss += batch_loss.item()
 
-        epoch_loss += batch_loss.item()
-
-    if not do_scoring:
-        return epoch_loss / len(dataloader)
+    if do_scoring:
+        return output_score        
     else:
-        return output_score
+        return epoch_loss / len(dataloader)
 
 
 def train(config):
@@ -267,7 +255,7 @@ def score(config):
         grad_update=False,
         do_scoring=True
     )
-    json_saving(config.output_path + "dev_lm.json", dev_output_score)
+    json_saving(config.output_path + "/dev_lm.json", dev_output_score)
 
     test_output_score = get_output_format(
         config.test_output_format,
@@ -283,7 +271,7 @@ def score(config):
         grad_update=False,
         do_scoring=True
     )
-    json_saving(config.output_path + "test_lm.json", test_output_score)
+    json_saving(config.output_path + "/test_lm.json", test_output_score)
     return
 
 

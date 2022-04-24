@@ -32,7 +32,7 @@ def find_best_weight(am, lm, hyps, ref):
             utt_hyps_len.append(len(hyp))
         hyps_len.append(utt_hyps_len)
 
-    for weight in tqdm(np.arange(0.00, 1.0, 0.01)):
+    for weight in tqdm(np.arange(0.0, 1.01, 0.01)):
         final_score = rescore(weight, hyps_len, am, lm)
         predict_hyps = get_highest_score_hyp(final_score, hyps)
         error = cer(ref, predict_hyps)
@@ -47,6 +47,7 @@ def rescore(weight, hyps_len, am, lm):
     lm = np.array(lm)
     hyps_len = np.array(hyps_len)
     final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
+    #final_score = (1-weight)*(am) + weight*(lm)
     return final_score
 
 def get_highest_score_hyp(final_score, hyps):

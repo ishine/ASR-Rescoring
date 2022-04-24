@@ -1,4 +1,4 @@
-task: training
+task: "scoring"
 
 method: "MD_MWER"
 
@@ -6,14 +6,17 @@ seed: 10
 
 device: "cuda:0"
 
-train_feature:
-  - hyps_token_ids
-train_feature_path: 
-  - "../espnet_data/alfred/train/hyps_text.json"
 dev_feature:
   - hyps_token_ids
 dev_feature_path: 
   - "../espnet_data/alfred/dev/hyps_text.json"
+dev_output_format: "../espnet_data/alfred/dev/hyps_score.json"
+
+test_feature:
+  - hyps_token_ids
+test_feature_path: 
+  - "../espnet_data/alfred/test/hyps_text.json"
+test_output_format: "../espnet_data/alfred/test/hyps_score.json"
 
 checkpoint_path: "result/MD_MWER/checkpoint_3.pth"
 output_path: "result/MD_MWER"
@@ -24,7 +27,7 @@ batch_size: 3
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 10
+max_utt: 999999999
 n_best: 10
 
 dataloader:
