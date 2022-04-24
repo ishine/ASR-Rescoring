@@ -4,32 +4,18 @@ method: "MD_MWER"
 
 seed: 10
 
-md_loss_weight: 0.0001
-lr: 0.00001
-epoch: 3
 device: "cuda:0"
 
 train_feature:
   - hyps_token_ids
-  - mlm_pll_score
-  - hyps_am_score
-  - hyps_cer
 train_feature_path: 
   - "../espnet_data/alfred/train/hyps_text.json"
-  - "../MLM_PLL/result/train_lm.json"
-  - "../espnet_data/alfred/train/hyps_score.json"
-  - "../espnet_data/alfred/train/hyps_cer.json"
 dev_feature:
   - hyps_token_ids
-  - mlm_pll_score
-  - hyps_am_score
-  - hyps_cer
 dev_feature_path: 
   - "../espnet_data/alfred/dev/hyps_text.json"
-  - "../MLM_PLL/result/dev_lm.json"
-  - "../espnet_data/alfred/dev/hyps_score.json"
-  - "../espnet_data/alfred/dev/hyps_cer.json"
 
+checkpoint_path: "result/MD_MWER/checkpoint_3.pth"
 output_path: "result/MD_MWER"
 
 # the unit of batch size is utterence
@@ -38,16 +24,11 @@ batch_size: 3
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 99999999
+max_utt: 10
 n_best: 10
 
 dataloader:
-  shuffle: False
   num_worker: 5
 
 model:
   bert: "bert-base-chinese"
-
-resume: 
-  start_from: 
-  checkpoint_path:

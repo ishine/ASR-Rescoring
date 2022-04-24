@@ -15,7 +15,7 @@ from model import RescoreBert
 from preprocess import get_feature
 from util.arg_parser import ArgParser
 from util.saving import model_saving, json_saving
-
+from util.get_output_format import get_output_format
 
 class MyDataset(Dataset):
     def __init__(self, data_set: List):
@@ -32,8 +32,6 @@ def collate(batch, config):
     input_ids = []
     attention_masks = []
     mlm_pll_score = []
-    hyps_am_score = []
-    hyps_cer = []
     utt_id = []
     hyp_id = []
 
@@ -45,19 +43,12 @@ def collate(batch, config):
             torch.tensor(data["attention_masks"], dtype=torch.long)
         )
         mlm_pll_score.append(data["mlm_pll_score"])
-
-        if config.method in ["MD_MWER", "MD_MWED"]:
-            hyps_am_score.append(data["hyps_am_score"])
-            hyps_cer.append(data["hyps_cer"])
-        
         utt_id.append(data["utt_id"])
         hyp_id.append(data["hyp_id"])
 
     input_ids = pad_sequence(input_ids, batch_first=True)
     attention_masks = pad_sequence(attention_masks, batch_first=True)
     mlm_pll_score = torch.tensor(mlm_pll_score, dtype=torch.float)
-    hyps_am_score = torch.tensor(hyps_am_score, dtype=torch.float)
-    hyps_cer = torch.tensor(hyps_cer, dtype=torch.float)
 
     if config.method == "MD":
         return {
@@ -67,7 +58,19 @@ def collate(batch, config):
             "utt_id": utt_id,
             "hyp_id": hyp_id
         }
+
     elif config.method in ["MD_MWER", "MD_MWED"]:
+        hyps_am_score = []
+        hyps_cer = []
+
+        for data in batch:
+            if config.method in ["MD_MWER", "MD_MWED"]:
+                hyps_am_score.append(data["hyps_am_score"])
+                hyps_cer.append(data["hyps_cer"])
+
+        hyps_am_score = torch.tensor(hyps_am_score, dtype=torch.float)
+        hyps_cer = torch.tensor(hyps_cer, dtype=torch.float)
+        
         return{
             "input_ids": input_ids,
             "attention_masks": attention_masks,
@@ -144,13 +147,29 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
                     batch["hyps_cer"] = batch["hyps_cer"].to(config.device)
                     mix_score = predict_lm_score + batch["hyps_am_score"]
 
+                    batch["hyps_cer"] = batch["hyps_cer"].reshape(-1, config.n_best)
+                    error_distribution = torch.softmax(batch["hyps_cer"], dim=1)
+
+                    temperature = torch.sum(mix_score, dim=-1) / torch.sum(batch["hyps_cer"],dim=-1)
+                    temperature = temperature.unsqueeze(dim=-1)
+
+                    score_distribution = torch.softmax(mix_score/temperature, dim=-1)
+
+                    MWED_loss = torch.nn.functional.kl_div(
+                        torch.log(score_distribution),
+                        error_distribution,
+                        reduction="sum"
+                    )
+                    batch_loss = MWED_loss + config.md_loss_weight * MD_loss
                     batch_loss.backward()
                 
                 optimizer.step()
                 optimizer.zero_grad()
 
         if do_scoring:
-            pass
+            #mix_score = predict_lm_score + batch["hyps_am_score"].to("cpu")
+            output_score[batch["utt_id"]][batch["hyp_id"]] = predict_lm_score.item()
+
         epoch_loss += batch_loss.item()
 
     if not do_scoring:
@@ -213,6 +232,58 @@ def train(config):
 
 
 def score(config):
+    dev_features = get_feature(
+        config,
+        data_paths=config.dev_feature_path,
+        require_features=config.dev_feature
+    )
+    dev_set = MyDataset(dev_features)
+    dev_loader = set_dataloader(config, dev_set, shuffle=False)
+
+    test_features = get_feature(
+        config,
+        data_paths=config.test_feature_path,
+        require_features=config.test_feature
+    )
+    test_set = MyDataset(test_features)
+    test_loader = set_dataloader(config, test_set, shuffle=False)
+
+    model = RescoreBert(config.model.bert)
+    checkpoint = torch.load(config.checkpoint_path)
+    model.load_state_dict(checkpoint)
+    model = model.to(config.device)
+    
+    dev_output_score = get_output_format(
+        config.dev_output_format,
+        config.max_utt,
+        config.n_best
+    )
+
+    dev_output_score = run_one_epoch(
+        config=config,
+        model=model,
+        dataloader=dev_loader,
+        output_score=dev_output_score,
+        grad_update=False,
+        do_scoring=True
+    )
+    json_saving(config.output_path + "dev_lm.json", dev_output_score)
+
+    test_output_score = get_output_format(
+        config.test_output_format,
+        config.max_utt,
+        config.n_best
+    )
+
+    test_output_score = run_one_epoch(
+        config=config,
+        model=model,
+        dataloader=test_loader,
+        output_score=test_output_score,
+        grad_update=False,
+        do_scoring=True
+    )
+    json_saving(config.output_path + "test_lm.json", test_output_score)
     return
 
 
