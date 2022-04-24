@@ -17,5 +17,5 @@ class RescoreBert(torch.nn.Module):
             return_dict=True
         )
         cls = bert_output.last_hidden_state[:, 0, :]
-        lm_score = self.linear(cls)
+        lm_score = self.linear(cls).squeeze(dim=-1)
         return lm_score

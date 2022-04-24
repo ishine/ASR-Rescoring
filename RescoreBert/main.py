@@ -32,6 +32,8 @@ def collate(batch, config):
     input_ids = []
     attention_masks = []
     mlm_pll_score = []
+    hyps_am_score = []
+    hyps_cer = []
     utt_id = []
     hyp_id = []
 
@@ -43,12 +45,19 @@ def collate(batch, config):
             torch.tensor(data["attention_masks"], dtype=torch.long)
         )
         mlm_pll_score.append(data["mlm_pll_score"])
+
+        if config.method in ["MD_MWER", "MD_MWED"]:
+            hyps_am_score.append(data["hyps_am_score"])
+            hyps_cer.append(data["hyps_cer"])
+        
         utt_id.append(data["utt_id"])
         hyp_id.append(data["hyp_id"])
 
     input_ids = pad_sequence(input_ids, batch_first=True)
     attention_masks = pad_sequence(attention_masks, batch_first=True)
     mlm_pll_score = torch.tensor(mlm_pll_score, dtype=torch.float)
+    hyps_am_score = torch.tensor(hyps_am_score, dtype=torch.float)
+    hyps_cer = torch.tensor(hyps_cer, dtype=torch.float)
 
     if config.method == "MD":
         return {
@@ -58,13 +67,22 @@ def collate(batch, config):
             "utt_id": utt_id,
             "hyp_id": hyp_id
         }
-
+    elif config.method in ["MD_MWER", "MD_MWED"]:
+        return{
+            "input_ids": input_ids,
+            "attention_masks": attention_masks,
+            "mlm_pll_score": mlm_pll_score,
+            "hyps_am_score": hyps_am_score,
+            "hyps_cer": hyps_cer,
+            "utt_id": utt_id,
+            "hyp_id": hyp_id
+        }
 
 def set_dataloader(config, dataset, shuffle=False):
     dataloader = DataLoader(
         dataset=dataset,
         collate_fn=partial(collate, config=config),
-        batch_size=config.dataloader.batch_size,
+        batch_size=config.batch_size * config.n_best,
         num_workers=config.dataloader.num_worker,
         shuffle=shuffle
     )
@@ -82,33 +100,48 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
     epoch_loss = 0
     loop = tqdm(enumerate(dataloader), total=len(dataloader))
     for _, batch in loop:
+        batch["input_ids"] = batch["input_ids"].to(config.device)
+        batch["attention_masks"] = batch["attention_masks"].to(config.device)
+        batch["mlm_pll_score"] = batch["mlm_pll_score"].to(config.device)
 
         with torch.set_grad_enabled(grad_update):
             predict_lm_score = model(
-                batch["input_ids"].to(config.device),
-                batch["attention_masks"].to(config.device),
+                batch["input_ids"],
+                batch["attention_masks"],
             )
-
             if grad_update:
                 batch_loss = 0
 
                 mse_loss_fn = torch.nn.MSELoss(reduction="sum")
-                MD_loss = mse_loss_fn(predict_lm_score, batch["mlm_pll_score"].to(config.device))
+                MD_loss = mse_loss_fn(predict_lm_score, batch["mlm_pll_score"])
 
                 if config.method == "MD":
                     batch_loss = MD_loss
                     batch_loss.backward()
 
                 elif config.method == "MD_MWER":
+                    batch["hyps_am_score"] = batch["hyps_am_score"].to(config.device)
+                    batch["hyps_cer"] = batch["hyps_cer"].to(config.device)
+                    #print( predict_lm_score, batch["hyps_am_score"])
                     mix_score = predict_lm_score + batch["hyps_am_score"]
-                    probility = torch.softmax(-1*mix_score, dim=1)
-                    average_cer = torch.sum(batch["hyps_cer"], dim=1) / config.n_best
-                    average_cer = average_cer.unsqueeze(dim=1)
+                    #print("\n mix_score: ", mix_score)
+                    mix_score = mix_score.reshape(-1, config.n_best)
+                    #print("\n mix_score(reshape): ", mix_score)
+                    probility = torch.softmax(-1*mix_score, dim=-1)
+                    #print("\nprobility: ", probility)
+                    batch["hyps_cer"] = batch["hyps_cer"].reshape(-1, config.n_best)
+                    #print("\ncer: ", batch["hyps_cer"])
+                    average_cer = torch.sum(batch["hyps_cer"], dim=-1) / config.n_best
+                    average_cer = average_cer.unsqueeze(dim=-1)
+                    #print("\n avergae: ", average_cer)
+                    #print("\nbatch[\"hyps_cer\"] - average_cer", batch["hyps_cer"] - average_cer)
                     MWER_loss = torch.sum(torch.mul(probility, (batch["hyps_cer"] - average_cer)))
-                    batch_loss = MWER_loss + config.md_weight * MD_loss
+                    batch_loss = MWER_loss + config.md_loss_weight * MD_loss
                     batch_loss.backward()
 
                 elif config.method == "MD_MWED":
+                    batch["hyps_am_score"] = batch["hyps_am_score"].to(config.device)
+                    batch["hyps_cer"] = batch["hyps_cer"].to(config.device)
                     mix_score = predict_lm_score + batch["hyps_am_score"]
 
                     batch_loss.backward()
@@ -118,8 +151,7 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
 
         if do_scoring:
             pass
-
-        epoch_loss += batch_loss
+        epoch_loss += batch_loss.item()
 
     if not do_scoring:
         return epoch_loss / len(dataloader)

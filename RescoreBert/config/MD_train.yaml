@@ -4,7 +4,7 @@ method: "MD"
 
 seed: 10
 lr: 0.00001
-epoch: 2
+epoch: 3
 device: "cuda:0"
 
 train_feature:
@@ -21,13 +21,19 @@ dev_feature_path:
   - "../espnet_data/alfred/dev/hyps_text.json"
   - "../MLM_PLL/result/dev_lm.json"
 
-output_path: "result/"
+output_path: "result/MD"
 
-max_utt: 10
+# the unit of batch size is utterence
+# if batch_size = m, means m*n-best hypotheses in one batch
+batch_size: 3
+
+# if you don't want to process too much data (like for debugging)
+# you can set this value to a small number.
+max_utt: 9999999999
+n_best: 10
 
 dataloader:
   shuffle: False
-  batch_size: 32
   num_worker: 5
 
 model:
