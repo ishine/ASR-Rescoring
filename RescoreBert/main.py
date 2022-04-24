@@ -184,12 +184,17 @@ def train(config):
     dev_loader = set_dataloader(config, dev_set, shuffle=False)
 
     model = RescoreBert(config.model.bert)
+    resume = False
+    if config.resume.start_from != None and config.resume.checkpoint_path != None:
+        checkpoint = torch.load(config.checkpoint_path)
+        model.load_state_dict(checkpoint)
+        resume = True
     model = model.to(config.device)
 
     train_loss_record = [0]*config.epoch
     dev_loss_record = [0]*config.epoch
     
-    for epoch_id in range(1, config.epoch+1):
+    for epoch_id in range(config.resume.start_from if resume else 1, config.epoch+1):
         print("Epoch {}/{}".format(epoch_id, config.epoch))
         
         train_loss_record[epoch_id-1] = run_one_epoch(
