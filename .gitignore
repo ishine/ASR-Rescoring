@@ -1,7 +1,8 @@
-/espnet_data/origin
-/espnet_data/train
-/espnet_data/dev
-/espnet_data/test
+/espnet_data/mine/espnet_train_data.json
+/espnet_data/mine/espnet_dev_data.json
+/espnet_data/mine/espnet_test_data.json
+/espnet_data/mine/train
+/espnet_data/mine/dev
 
 /espnet_data/alfred/train_data.json
 /espnet_data/alfred/dev_data.json
