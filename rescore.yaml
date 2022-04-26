@@ -1,13 +1,13 @@
 dev_am_path: "espnet_data/alfred/dev/hyps_score.json"
-dev_lm_path: "RescoreBert/result/MD_MWER/dev_lm.json"
+dev_lm_path: "RMBR/result/BertScore/dev_MBR.json"
 dev_hyps_text_path: "espnet_data/alfred/dev/hyps_text.json"
 dev_ref_text_path: "espnet_data/alfred/dev/ref_text.json"
 
 
 test_am_path: "espnet_data/alfred/test/hyps_score.json"
-test_lm_path: "RescoreBert/result/MD_MWER/test_lm.json"
+test_lm_path: "RMBR/result/BertScore/test_MBR.json"
 test_hyps_text_path: "espnet_data/alfred/test/hyps_text.json"
 test_ref_text_path: "espnet_data/alfred/test/ref_text.json"
 
-output_path: "rescore_result/RescoreBert/MD_MWER"
+output_path: "rescore_result/RMBR/BertScore"
 

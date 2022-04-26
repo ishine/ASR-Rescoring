@@ -52,5 +52,4 @@ def get_feature(config, data_paths, require_features):
                 row.update({
                         "mlm_pll_score": feature_json[utt_id][hyp_id]
                 })
-
     return output

@@ -117,7 +117,7 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
                     #print("\n mix_score: ", mix_score)
                     mix_score = mix_score.reshape(-1, config.n_best)
                     #print("\n mix_score(reshape): ", mix_score)
-                    probility = torch.softmax(-1*mix_score, dim=-1)
+                    probility = torch.softmax(mix_score, dim=-1)
                     #print("\nprobility: ", probility)
                     batch["hyps_cer"] = batch["hyps_cer"].reshape(-1, config.n_best)
                     #print("\ncer: ", batch["hyps_cer"])
@@ -133,9 +133,10 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
                     batch["hyps_am_score"] = batch["hyps_am_score"].to(config.device)
                     batch["hyps_cer"] = batch["hyps_cer"].to(config.device)
                     mix_score = predict_lm_score + batch["hyps_am_score"]
-
+                    mix_score = mix_score.reshape(-1, config.n_best)
+                    
                     batch["hyps_cer"] = batch["hyps_cer"].reshape(-1, config.n_best)
-                    error_distribution = torch.softmax(batch["hyps_cer"], dim=1)
+                    error_distribution = torch.softmax(batch["hyps_cer"], dim=-1)
 
                     temperature = torch.sum(mix_score, dim=-1) / torch.sum(batch["hyps_cer"],dim=-1)
                     temperature = temperature.unsqueeze(dim=-1)
@@ -187,10 +188,10 @@ def train(config):
 
     if config.resume.start_from != None and config.resume.checkpoint_path != None:
         resume = True
-        checkpoint = torch.load(config.checkpoint_path)
+        checkpoint = torch.load(config.resume.checkpoint_path)
         model.load_state_dict(checkpoint)
         loss_record = json.load(
-            open(config.output_path + "/loss_.json", "r", encoding="utf-8")
+            open(config.output_path + "/loss.json", "r", encoding="utf-8")
         )
         train_loss_record = loss_record["train"]
         dev_loss_record = loss_record["dev"]
@@ -227,7 +228,7 @@ def train(config):
         
         model_saving(config.output_path, model.state_dict(), epoch_id)
         json_saving(
-            config.output_path + "/loss_.json",
+            config.output_path + "/loss.json",
             {"train": train_loss_record, "dev": dev_loss_record}
         )
 

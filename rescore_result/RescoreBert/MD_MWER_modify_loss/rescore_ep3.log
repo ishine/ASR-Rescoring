@@ -1,0 +1,34 @@
+16:49:57,588 root INFO namespace(dev_am_path='espnet_data/alfred/dev/hyps_score.json', dev_hyps_text_path='espnet_data/alfred/dev/hyps_text.json', dev_lm_path='RescoreBert/result/MD_MWER_modify_loss/dev_lm_ep3.json', dev_ref_text_path='espnet_data/alfred/dev/ref_text.json', output_path='rescore_result/RescoreBert/MD_MWER_modify_loss', test_am_path='espnet_data/alfred/test/hyps_score.json', test_hyps_text_path='espnet_data/alfred/test/hyps_text.json', test_lm_path='RescoreBert/result/MD_MWER_modify_loss/test_lm_ep3.json', test_ref_text_path='espnet_data/alfred/test/ref_text.json')
+16:49:57,595 root INFO 
+def find_best_weight(am, lm, hyps, ref):
+    best_cer = sys.float_info.max
+
+    hyps_len = []
+    for utt_hyps in hyps:
+        utt_hyps_len = []
+        for hyp in utt_hyps:
+            utt_hyps_len.append(len(hyp))
+        hyps_len.append(utt_hyps_len)
+
+    for weight in tqdm(np.arange(0.0, 1.01, 0.01)):
+        final_score = rescore(weight, hyps_len, am, lm)
+        predict_hyps = get_highest_score_hyp(final_score, hyps)
+        error = cer(ref, predict_hyps)
+        if error < best_cer:
+            best_cer = error
+            best_weight = weight
+
+    return best_weight, best_cer
+
+16:49:57,595 root INFO 
+def rescore(weight, hyps_len, am, lm):
+    am = np.array(am)
+    lm = np.array(lm)
+    hyps_len = np.array(hyps_len)
+    final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
+    #final_score = (1-weight)*(am) + weight*(lm)
+    return final_score
+
+16:50:50,842 root INFO best_weight: 0.48
+16:50:50,842 root INFO dev cer: 0.03798559469370462
+16:50:51,461 root INFO test cer: 0.04830811816923591

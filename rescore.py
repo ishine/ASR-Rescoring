@@ -47,7 +47,7 @@ def rescore(weight, hyps_len, am, lm):
     lm = np.array(lm)
     hyps_len = np.array(hyps_len)
     final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
-    #final_score = (1-weight)*(am) + weight*(lm)
+    #final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
     return final_score
 
 def get_highest_score_hyp(final_score, hyps):

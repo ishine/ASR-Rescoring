@@ -3,6 +3,8 @@ task: training
 method: "MD"
 
 seed: 10
+
+md_loss_weight: 0.0001
 lr: 0.00001
 epoch: 10
 device: "cuda:0"
@@ -10,18 +12,25 @@ device: "cuda:0"
 train_feature:
   - hyps_token_ids
   - mlm_pll_score
+  - hyps_am_score
+  - hyps_cer
 train_feature_path: 
   - "../espnet_data/alfred/train/hyps_text.json"
   - "../MLM_PLL/result/train_lm.json"
-
+  - "../espnet_data/alfred/train/hyps_score.json"
+  - "../espnet_data/alfred/train/hyps_cer.json"
 dev_feature:
   - hyps_token_ids
   - mlm_pll_score
+  - hyps_am_score
+  - hyps_cer
 dev_feature_path: 
   - "../espnet_data/alfred/dev/hyps_text.json"
   - "../MLM_PLL/result/dev_lm.json"
+  - "../espnet_data/alfred/dev/hyps_score.json"
+  - "../espnet_data/alfred/dev/hyps_cer.json"
 
-output_path: "result/MD"
+output_path: "result/MD_MWER_modify_loss"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
@@ -29,7 +38,7 @@ batch_size: 3
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 9999999999
+max_utt: 999999999
 n_best: 10
 
 dataloader:
@@ -40,5 +49,5 @@ model:
   bert: "bert-base-chinese"
 
 resume: 
-  start_from: 4
-  checkpoint_path: "result/MD/checkpoint_3.pth"
+  start_from: 
+  checkpoint_path: 

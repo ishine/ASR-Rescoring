@@ -1,6 +1,6 @@
-task: scoring
+task: "scoring"
 
-method: "MD"
+method: "MD_MWED"
 
 seed: 10
 
@@ -12,19 +12,18 @@ dev_feature_path:
   - "../espnet_data/alfred/dev/hyps_text.json"
 dev_output_format: "../espnet_data/alfred/dev/hyps_score.json"
 
-
 test_feature:
   - hyps_token_ids
 test_feature_path: 
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/hyps_score.json"
 
-checkpoint_path: "result/MD/checkpoint_10.pth"
-output_path: "result/MD"
+checkpoint_path: "result/MD_MWED/checkpoint_7.pth"
+output_path: "result/MD_MWED"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
-batch_size: 3
+batch_size: 15
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.

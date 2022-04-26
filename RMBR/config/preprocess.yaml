@@ -1,9 +1,0 @@
-source_data_path:
-  train: "../../data/espnet_train_data.json"
-  dev: "../../data/espnet_dev_data.json"
-  test: "../../data/espnet_test_data.json"
-
-output_data_path:
-  train: "preprocessed_data/train/"
-  dev: "preprocessed_data/dev/"
-  test: "preprocessed_data/test/"
