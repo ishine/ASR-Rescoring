@@ -6,7 +6,7 @@ seed: 10
 
 md_loss_weight: 0.0001
 lr: 0.00001
-epoch: 10
+epoch: 20
 device: "cuda:0"
 
 train_feature:
@@ -49,5 +49,5 @@ model:
   bert: "bert-base-chinese"
 
 resume: 
-  start_from: 
-  checkpoint_path: 
+  start_from: 11
+  checkpoint_path: "result/MD_MWED/checkpoint_10.pth"

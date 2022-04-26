@@ -18,7 +18,7 @@ test_feature_path:
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/hyps_score.json"
 
-checkpoint_path: "result/MD_MWED/checkpoint_7.pth"
+checkpoint_path: "result/MD_MWED/checkpoint_10.pth"
 output_path: "result/MD_MWED"
 
 # the unit of batch size is utterence
