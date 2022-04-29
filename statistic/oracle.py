@@ -24,7 +24,7 @@ if __name__ == "__main__":
     for hyps in cer_json.values():
         max_cer = sys.maxsize
         oracle_pos = -1
-        for pos, cer in enumerate(hyps.values()):
+        for pos, cer in zip(range(n_best), hyps.values()):
             if cer < max_cer:
                 max_cer = cer
                 oracle_pos = pos
