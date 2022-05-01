@@ -1,0 +1,44 @@
+task: training
+
+method: "one_hyp"
+
+seed: 10
+
+lr: 0.00001
+epoch: 10
+device: "cpu"
+
+train_feature:
+  - ref_token_ids
+  - hyps_token_ids
+train_feature_path: 
+  - "../espnet_data/alfred/test/ref_text.json"
+  - "../espnet_data/alfred/test/hyps_text.json"
+dev_feature:
+  - ref_token_ids
+  - hyps_token_ids
+dev_feature_path: 
+  - "../espnet_data/alfred/test/ref_text.json"
+  - "../espnet_data/alfred/test/hyps_text.json"
+
+output_path: "result/one_hyp"
+
+# the unit of batch size is utterence
+# if batch_size = m, means m*n-best hypotheses in one batch
+batch_size: 4
+
+# if you don't want to process too much data (like for debugging)
+# you can set this value to a small number.
+max_utt: 4
+n_best: 1
+
+dataloader:
+  shuffle: False
+  num_worker: 5
+
+model:
+  bart: "fnlp/bart-base-chinese"
+
+resume: 
+  start_from: 
+  checkpoint_path: 
