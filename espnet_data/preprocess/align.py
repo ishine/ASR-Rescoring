@@ -2,7 +2,7 @@ import sys
 from typing import List
 import numpy as np
 
-def levenshtein_distance_alignment(reference: List[str] or str, hypothesis: List[str] or str):
+def levenshtein_distance_alignment(reference: List[str], hypothesis: List[str]):
     '''
     "U": unchange
     "S": substitution
@@ -10,17 +10,13 @@ def levenshtein_distance_alignment(reference: List[str] or str, hypothesis: List
     "D": Deletion
 
     example1:
-        >>> levenshtein_distance_alignment("你好嗎","你好不好")
-        ['你好*嗎', '你好不好', 'UUDS']
+        >>> levenshtein_distance_alignment(["how", "are", "you"], ["how", "are", "you", "doing"])
+        [['how', 'are', 'you', '*'], ['how', 'are', 'you', 'doing'], ['U', 'U', 'U', 'D']]
     
     example2:
         >>> levenshtein_distance_alignment(["你", "好", "嗎"], ["你", "好", "不", "好"])
-        ['你好*嗎', '你好不好', 'UUDS']
+        [['你', '好', '*', '嗎'], ['你', '好', '不', '好'], ['U', 'U', 'D', 'S']]
     '''
-    if isinstance(hypothesis, str):
-        hypothesis = list(hypothesis)
-    if isinstance(reference, str):
-        reference = list(reference)
 
     hypothesis = ["[start]"] + hypothesis
     reference = ["[start]"] + reference
@@ -60,42 +56,42 @@ def levenshtein_distance_alignment(reference: List[str] or str, hypothesis: List
                 operation_matrix[i][j] = op_id
 
 
-    aligned_ref = ""
-    aligned_hyp = ""
-    aligned_op = ""
+    aligned_ref = []
+    aligned_hyp = []
+    aligned_op = []
 
     i = len_hyp - 1
     j = len_ref - 1
     while i >= 1 or j >= 1:
         if operation_matrix[i][j] == "U":
-            aligned_ref += reference[j]
-            aligned_hyp += hypothesis[i]
-            aligned_op += "U"
+            aligned_ref.append(reference[j])
+            aligned_hyp.append(hypothesis[i])
+            aligned_op.append("U")
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "S":
-            aligned_ref += reference[j]
-            aligned_hyp += hypothesis[i]
-            aligned_op += "S"
+            aligned_ref.append(reference[j])
+            aligned_hyp.append(hypothesis[i])
+            aligned_op.append("S")
             i -= 1
             j -= 1
         
         elif operation_matrix[i][j] == "D":
-            aligned_ref += "*"
-            aligned_hyp += hypothesis[i]
-            aligned_op += "D"
+            aligned_ref.append("*")
+            aligned_hyp.append(hypothesis[i])
+            aligned_op.append("D")
             i -= 1
         
         elif operation_matrix[i][j] == "I":
-            aligned_ref += reference[j]
-            aligned_hyp += "*"
-            aligned_op += "I"
+            aligned_ref.append(reference[j])
+            aligned_hyp.append("*")
+            aligned_op.append("I")
             j -= 1
 
     output = []
     for string in [aligned_ref, aligned_hyp, aligned_op]:
-        reversed_string=''.join(reversed(string))
+        reversed_string=list(reversed(string))
         output.append(reversed_string)
 
     return output
