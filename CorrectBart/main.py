@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
 from get_feature import get_feature
-from model import CorrectBart
+from model import CorrectBart, NBestAlignCorrectBart
 from util.arg_parser import ArgParser
 from util.saving import model_saving, json_saving
 from util.get_output_format import get_output_format
@@ -30,20 +30,21 @@ class MyDataset(Dataset):
 
 def collate(batch, config):
     utt_id = []
-    hyp_id = []
     input_ids = []
     attention_masks = []
     ref_token_ids = []
 
     for data in batch:
         utt_id.append(data["utt_id"])
-        hyp_id.append(data["hyp_id"])
+        
         input_ids.append(
             torch.tensor(data["hyps_token_ids"], dtype=torch.long)
         )
+        
         attention_masks.append(
             torch.tensor(data["attention_masks"], dtype=torch.long)
         )
+        
         if config.task == "training":
             ref_token_ids.append(
                 torch.tensor(data["ref_token_ids"], dtype=torch.long)
@@ -133,8 +134,15 @@ def train(config):
     dev_set = MyDataset(dev_features)
     dev_loader = set_dataloader(config, dev_set, shuffle=False)
 
-    model = CorrectBart(config.model.bart)
-
+    if config.method == "one_hyp":
+        model = CorrectBart(config.model.bart)
+    elif config.method == "n_best_align":
+        model = NBestAlignCorrectBart(
+            config.model.bart,
+            config.model.alignment_embedding,
+            config.n_best
+        )
+        
     if config.resume.start_from != None and config.resume.checkpoint_path != None:
         resume = True
         checkpoint = torch.load(config.resume.checkpoint_path)
@@ -180,7 +188,7 @@ def train(config):
             config.output_path + "/loss.json",
             {"train": train_loss_record, "dev": dev_loss_record}
         )
-    
+
 
 def inference(config):
     dev_features = get_feature(
@@ -199,7 +207,14 @@ def inference(config):
     test_set = MyDataset(test_features)
     test_loader = set_dataloader(config, test_set, shuffle=False)
 
-    model = CorrectBart(config.model.bart)
+    if config.method == "one_hyp":
+        model = CorrectBart(config.model.bart)
+    elif config.method == "n_best_align":
+        model = NBestAlignCorrectBart(
+            config.model.bart,
+            config.model.alignment_embedding,
+            config.n_best
+        )
     checkpoint = torch.load(config.checkpoint_path)
     model.load_state_dict(checkpoint)
     model = model.to(config.device)
