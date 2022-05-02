@@ -31,6 +31,7 @@ class CorrectBart(torch.nn.Module):
         bart_output = self.bart.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
+            max_length=50, 
             return_dict=True
         )
             
