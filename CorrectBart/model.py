@@ -34,7 +34,7 @@ class CorrectBart(torch.nn.Module):
             max_length=50, 
             return_dict=True
         )
-            
+        print(bart_output)
         predictions = []
         for pred in bart_output.tolist():
             pred = self.tokenizer.convert_ids_to_tokens(pred)
