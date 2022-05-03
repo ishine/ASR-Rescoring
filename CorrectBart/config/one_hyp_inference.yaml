@@ -10,7 +10,7 @@ dev_feature:
   - hyps_token_ids
 dev_feature_path: 
   - "../espnet_data/alfred/dev/hyps_text.json"
-dev_output_format: "../espnet_data/alfred/test/ref_text.json"
+dev_output_format: "../espnet_data/alfred/dev/ref_text.json"
 
 test_feature:
   - hyps_token_ids
@@ -18,7 +18,7 @@ test_feature_path:
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/ref_text.json"
 
-checkpoint_path: "result/one_hyp/checkpoint_10.pth"
+checkpoint_path: "result/one_hyp/checkpoint_4.pth"
 output_path: "result/one_hyp"
 
 # the unit of batch size is utterence
