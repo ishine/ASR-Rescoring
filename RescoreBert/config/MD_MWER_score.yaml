@@ -18,8 +18,8 @@ test_feature_path:
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/hyps_score.json"
 
-checkpoint_path: "result/MD_MWER_modify_loss/checkpoint_10.pth"
-output_path: "result/MD_MWER_modify_loss"
+checkpoint_path: "result/retrain_MD_MWER_modify_loss/checkpoint_6.pth"
+output_path: "result/retrain_MD_MWER_modify_loss"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
