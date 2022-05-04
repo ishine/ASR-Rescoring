@@ -4,13 +4,13 @@ method: "n_best_align"
 
 seed: 10
 
-device: "cpu"
+device: "cuda:0"
 
 dev_feature:
   - hyps_token_ids
 dev_feature_path: 
-  - "../espnet_data/alfred/test/hyps_text.json"
-dev_output_format: "../espnet_data/alfred/test/ref_text.json"
+  - "../espnet_data/alfred/dev/hyps_text.json"
+dev_output_format: "../espnet_data/alfred/dev/ref_text.json"
 
 test_feature:
   - hyps_token_ids
@@ -18,16 +18,16 @@ test_feature_path:
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/ref_text.json"
 
-checkpoint_path: "result/n_best_align/checkpoint_1.pth"
-output_path: "result/n_best_align"
+checkpoint_path: "result/3_best_align_lr_10-6/checkpoint_35.pth"
+output_path: "result/3_best_align_lr_10-6"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
-batch_size: 4
+batch_size: 32
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 4
+max_utt: 999999
 n_best: 3
 
 dataloader:

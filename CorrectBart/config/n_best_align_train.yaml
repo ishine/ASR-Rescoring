@@ -4,32 +4,32 @@ method: "n_best_align"
 
 seed: 10
 
-lr: 0.00001
-epoch: 10
-device: "cpu"
+lr: 0.000001
+epoch: 40
+device: "cuda:0"
 
 train_feature:
   - ref_token_ids
   - hyps_token_ids
 train_feature_path: 
-  - "../espnet_data/alfred/test/ref_text.json"
-  - "../espnet_data/alfred/test/hyps_text.json"
+  - "../espnet_data/alfred/train/ref_text.json"
+  - "../espnet_data/alfred/train/hyps_text.json"
 dev_feature:
   - ref_token_ids
   - hyps_token_ids
 dev_feature_path: 
-  - "../espnet_data/alfred/test/ref_text.json"
-  - "../espnet_data/alfred/test/hyps_text.json"
+  - "../espnet_data/alfred/dev/ref_text.json"
+  - "../espnet_data/alfred/dev/hyps_text.json"
 
-output_path: "result/n_best_align"
+output_path: "result/3_best_align_lr_10-6"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
-batch_size: 4
+batch_size: 32
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 4
+max_utt: 9999999
 n_best: 3
 
 dataloader:
@@ -41,5 +41,5 @@ model:
   alignment_embedding: 512
 
 resume: 
-  start_from: 
-  checkpoint_path: 
+  start_from: 31
+  checkpoint_path: result/3_best_align_lr_10-6/checkpoint_30.pth

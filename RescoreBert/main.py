@@ -79,7 +79,7 @@ def set_dataloader(config, dataset, shuffle=False):
     return dataloader
 
 
-def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True, do_scoring=False):
+def run_one_epoch(config, model, dataloader, output_score=None, grad_update=False, train=False):
     if grad_update:
         model.train()
         optimizer = optim.AdamW(model.parameters(), lr=config.lr)
@@ -93,41 +93,37 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
         batch["input_ids"] = batch["input_ids"].to(config.device)
         batch["attention_masks"] = batch["attention_masks"].to(config.device)
         batch["mlm_pll_score"] = batch["mlm_pll_score"].to(config.device)
-
+        batch_loss = 0
+        
         with torch.set_grad_enabled(grad_update):
             predict_lm_score = model(
                 batch["input_ids"],
                 batch["attention_masks"],
             )
-            if grad_update:
-                batch_loss = 0
 
+            if train: 
                 mse_loss_fn = torch.nn.MSELoss(reduction="sum")
                 MD_loss = mse_loss_fn(predict_lm_score, batch["mlm_pll_score"])
 
                 if config.method == "MD":
                     batch_loss = MD_loss
-                    batch_loss.backward()
-
+                    
                 elif config.method == "MD_MWER":
                     batch["hyps_am_score"] = batch["hyps_am_score"].to(config.device)
                     batch["hyps_cer"] = batch["hyps_cer"].to(config.device)
-                    #print( predict_lm_score, batch["hyps_am_score"])
+
                     mix_score = predict_lm_score + batch["hyps_am_score"]
-                    #print("\n mix_score: ", mix_score)
                     mix_score = mix_score.reshape(-1, config.n_best)
-                    #print("\n mix_score(reshape): ", mix_score)
+
                     probility = torch.softmax(mix_score, dim=-1)
-                    #print("\nprobility: ", probility)
+
                     batch["hyps_cer"] = batch["hyps_cer"].reshape(-1, config.n_best)
-                    #print("\ncer: ", batch["hyps_cer"])
+
                     average_cer = torch.sum(batch["hyps_cer"], dim=-1) / config.n_best
                     average_cer = average_cer.unsqueeze(dim=-1)
-                    #print("\n avergae: ", average_cer)
-                    #print("\nbatch[\"hyps_cer\"] - average_cer", batch["hyps_cer"] - average_cer)
+
                     MWER_loss = torch.sum(torch.mul(probility, (batch["hyps_cer"] - average_cer)))
                     batch_loss = MWER_loss + config.md_loss_weight * MD_loss
-                    batch_loss.backward()
 
                 elif config.method == "MD_MWED":
                     batch["hyps_am_score"] = batch["hyps_am_score"].to(config.device)
@@ -149,22 +145,22 @@ def run_one_epoch(config, model, dataloader, output_score=None, grad_update=True
                         reduction="sum"
                     )
                     batch_loss = MWED_loss + config.md_loss_weight * MD_loss
-                    batch_loss.backward()
                 
-                optimizer.step()
-                optimizer.zero_grad()
+                epoch_loss += batch_loss.item()
+                
+                if grad_update:
+                    batch_loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
 
-        if do_scoring:
-            for utt_id, hyp_id, lm_score in zip(batch["utt_id"], batch["hyp_id"], predict_lm_score):
-            #mix_score = predict_lm_score + batch["hyps_am_score"].to("cpu")
-                output_score[utt_id][hyp_id] = lm_score.item()
-        else:
-            epoch_loss += batch_loss.item()
+            else: 
+                for utt_id, hyp_id, lm_score in zip(batch["utt_id"], batch["hyp_id"], predict_lm_score):
+                    output_score[utt_id][hyp_id] = lm_score.item()
 
-    if do_scoring:
-        return output_score        
-    else:
+    if train:
         return epoch_loss / len(dataloader)
+    else:
+        return output_score
 
 
 def train(config):
@@ -210,7 +206,7 @@ def train(config):
             dataloader=train_loader,
             output_score=None,
             grad_update=True,
-            do_scoring=False
+            train=True
         )
         print("epoch ", epoch_id, " train loss: ", train_loss, "\n")
         train_loss_record.append(train_loss)
@@ -221,7 +217,7 @@ def train(config):
             dataloader=dev_loader,
             output_score=None,
             grad_update=False,
-            do_scoring=False
+            train=True
         )
         print("epoch ", epoch_id, " dev loss: ", dev_loss, "\n")
         dev_loss_record.append(dev_loss)
@@ -267,7 +263,7 @@ def score(config):
         dataloader=dev_loader,
         output_score=dev_output_score,
         grad_update=False,
-        do_scoring=True
+        train=False
     )
     json_saving(config.output_path + "/dev_lm.json", dev_output_score)
 
@@ -283,7 +279,7 @@ def score(config):
         dataloader=test_loader,
         output_score=test_output_score,
         grad_update=False,
-        do_scoring=True
+        train=False
     )
     json_saving(config.output_path + "/test_lm.json", test_output_score)
     return
