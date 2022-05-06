@@ -1,6 +1,6 @@
 task: inference
 
-method: "n_best_align"
+method: "n_best_align_not_fuse"
 
 seed: 10
 
@@ -18,8 +18,8 @@ test_feature_path:
   - "../espnet_data/alfred/test/hyps_text.json"
 test_output_format: "../espnet_data/alfred/test/ref_text.json"
 
-checkpoint_path: "result/3_best_align_lr_10-6/checkpoint_35.pth"
-output_path: "result/3_best_align_lr_10-6"
+checkpoint_path: "result/3_best_align_not_fuse/lr_10-6/checkpoint_9.pth"
+output_path: "result/3_best_align_not_fuse/lr_10-6"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch

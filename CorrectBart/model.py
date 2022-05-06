@@ -10,6 +10,7 @@ class CorrectBart(nn.Module):
         self.tokenizer = BertTokenizer.from_pretrained(bart)
 
     def forward(self, input_ids, attention_mask, labels=None):
+
         bart_output = self.bart(
             input_ids=input_ids, 
             attention_mask=attention_mask,
@@ -26,7 +27,6 @@ class CorrectBart(nn.Module):
             max_length=50, 
             return_dict=True
         )
-        print(bart_output)
         predictions = []
         for pred in bart_output.tolist():
             pred = self.tokenizer.convert_ids_to_tokens(pred)

@@ -1,13 +1,15 @@
 dev_am_path: "espnet_data/alfred/dev/hyps_score.json"
-dev_lm_path: "RescoreBert/result/retrain_MD_MWED/dev_lm.json"
+dev_lm_path: "RescoreBert/result/MD_MWER/6best/dev_lm.json"
 dev_hyps_text_path: "espnet_data/alfred/dev/hyps_text.json"
 dev_ref_text_path: "espnet_data/alfred/dev/ref_text.json"
 
 
 test_am_path: "espnet_data/alfred/test/hyps_score.json"
-test_lm_path: "RescoreBert/result/retrain_MD_MWED/test_lm.json"
+test_lm_path: "RescoreBert/result/MD_MWER/6best/test_lm.json"
 test_hyps_text_path: "espnet_data/alfred/test/hyps_text.json"
 test_ref_text_path: "espnet_data/alfred/test/ref_text.json"
 
-output_path: "rescore_result/RescoreBert/MD_MWED"
+n_best: 6
+
+output_path: "rescore_result/RescoreBert/MD_MWER"
 

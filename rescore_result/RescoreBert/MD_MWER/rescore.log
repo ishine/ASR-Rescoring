@@ -1,0 +1,36 @@
+14:28:05,132 root INFO namespace(dev_am_path='espnet_data/alfred/dev/hyps_score.json', dev_hyps_text_path='espnet_data/alfred/dev/hyps_text.json', dev_lm_path='RescoreBert/result/MD_MWER/6best/dev_lm.json', dev_ref_text_path='espnet_data/alfred/dev/ref_text.json', n_best=6, output_path='rescore_result/RescoreBert/MD_MWER', test_am_path='espnet_data/alfred/test/hyps_score.json', test_hyps_text_path='espnet_data/alfred/test/hyps_text.json', test_lm_path='RescoreBert/result/MD_MWER/6best/test_lm.json', test_ref_text_path='espnet_data/alfred/test/ref_text.json')
+14:28:05,138 root INFO 
+def find_best_weight(am, lm, hyps, ref, config):
+    best_cer = sys.float_info.max
+
+    hyps_len = []
+    for utt_hyps in hyps:
+        utt_hyps_len = []
+        for hyp_num, hyp in enumerate(utt_hyps):
+            if hyp_num == config.n_best:
+                break
+            utt_hyps_len.append(len(hyp))
+        hyps_len.append(utt_hyps_len)
+
+    for weight in tqdm(np.arange(0.0, 1.01, 0.01)):
+        final_score = rescore(weight, hyps_len, am, lm, config)
+        predict_hyps = get_highest_score_hyp(final_score, hyps)
+        error = cer(ref, predict_hyps)
+        if error < best_cer:
+            best_cer = error
+            best_weight = weight
+
+    return best_weight, best_cer
+
+14:28:05,138 root INFO 
+def rescore(weight, hyps_len, am, lm, config):
+    am = np.array(am)[:, :config.n_best]
+    lm = np.array(lm)
+    hyps_len = np.array(hyps_len)
+    final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
+    #final_score = (1-weight)*(am)/hyps_len + weight*(lm)/hyps_len
+    return final_score
+
+14:28:44,458 root INFO best_weight: 0.32
+14:28:44,458 root INFO dev cer: 0.04539765560701467
+14:28:44,916 root INFO test cer: 0.05058941440366534

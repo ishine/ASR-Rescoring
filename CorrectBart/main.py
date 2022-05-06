@@ -134,7 +134,7 @@ def train(config):
     dev_set = MyDataset(dev_features)
     dev_loader = set_dataloader(config, dev_set, shuffle=False)
 
-    if config.method == "one_hyp":
+    if config.method in ["one_hyp", "n_best_align_not_fuse"]:
         model = CorrectBart(config.model.bart)
     elif config.method == "n_best_align":
         model = NBestAlignCorrectBart(
@@ -207,7 +207,7 @@ def inference(config):
     test_set = MyDataset(test_features)
     test_loader = set_dataloader(config, test_set, shuffle=False)
 
-    if config.method == "one_hyp":
+    if config.method in ["one_hyp", "n_best_align_not_fuse"]:
         model = CorrectBart(config.model.bart)
     elif config.method == "n_best_align":
         model = NBestAlignCorrectBart(

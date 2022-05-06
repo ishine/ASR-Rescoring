@@ -1,4 +1,5 @@
 import json
+import numpy as np
 from tqdm import tqdm
 from transformers import BertTokenizer
 from espnet_data.preprocess.align import levenshtein_distance_alignment
@@ -74,7 +75,7 @@ def get_feature(config, data_paths, require_features):
                         "attention_masks": [1] * (len(hyp_token_ids))
                     })
 
-    elif config.method == "n_best_align":
+    elif config.method in ["n_best_align", "n_best_align_not_fuse"]:
         # initialize the output data format
         output = []
         feature = feature_set["hyps_token_ids"]
@@ -129,6 +130,10 @@ def get_feature(config, data_paths, require_features):
                     for alignment in merged_alignment:
                         input_token_ids.append(tokenizer.convert_tokens_to_ids(alignment))
 
+                    if config.method == "n_best_align_not_fuse":
+                        input_token_ids = np.array(input_token_ids)
+                        input_token_ids = input_token_ids.flatten()
+                        
                     row.update({
                         "hyps_token_ids": input_token_ids,
                         "attention_masks": [1] * (len(input_token_ids)),

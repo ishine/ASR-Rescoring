@@ -1,5 +1,5 @@
-21:47:06,477 root INFO namespace(dev_am_path='espnet_data/alfred/dev/hyps_score.json', dev_hyps_text_path='espnet_data/alfred/dev/hyps_text.json', dev_lm_path='RescoreBert/result/MD_MWER/dev_lm.json', dev_ref_text_path='espnet_data/alfred/dev/ref_text.json', output_path='rescore_result/RescoreBert/MD_MWER', test_am_path='espnet_data/alfred/test/hyps_score.json', test_hyps_text_path='espnet_data/alfred/test/hyps_text.json', test_lm_path='RescoreBert/result/MD_MWER/test_lm.json', test_ref_text_path='espnet_data/alfred/test/ref_text.json')
-21:47:06,483 root INFO 
+16:49:57,588 root INFO namespace(dev_am_path='espnet_data/alfred/dev/hyps_score.json', dev_hyps_text_path='espnet_data/alfred/dev/hyps_text.json', dev_lm_path='RescoreBert/result/MD_MWER_modify_loss/dev_lm_ep3.json', dev_ref_text_path='espnet_data/alfred/dev/ref_text.json', output_path='rescore_result/RescoreBert/MD_MWER_modify_loss', test_am_path='espnet_data/alfred/test/hyps_score.json', test_hyps_text_path='espnet_data/alfred/test/hyps_text.json', test_lm_path='RescoreBert/result/MD_MWER_modify_loss/test_lm_ep3.json', test_ref_text_path='espnet_data/alfred/test/ref_text.json')
+16:49:57,595 root INFO 
 def find_best_weight(am, lm, hyps, ref):
     best_cer = sys.float_info.max
 
@@ -20,7 +20,7 @@ def find_best_weight(am, lm, hyps, ref):
 
     return best_weight, best_cer
 
-21:47:06,484 root INFO 
+16:49:57,595 root INFO 
 def rescore(weight, hyps_len, am, lm):
     am = np.array(am)
     lm = np.array(lm)
@@ -29,6 +29,6 @@ def rescore(weight, hyps_len, am, lm):
     #final_score = (1-weight)*(am) + weight*(lm)
     return final_score
 
-21:48:26,398 root INFO best_weight: 0.27
-21:48:26,399 root INFO dev cer: 0.04643495453903507
-21:48:27,538 root INFO test cer: 0.050054884742041714
+16:50:50,842 root INFO best_weight: 0.48
+16:50:50,842 root INFO dev cer: 0.03798559469370462
+16:50:51,461 root INFO test cer: 0.04830811816923591

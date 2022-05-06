@@ -5,7 +5,7 @@ method: "MD_MWED"
 seed: 10
 
 md_loss_weight: 0.0001
-lr: 0.00001
+lr: 0.000005
 epoch: 10
 device: "cuda:0"
 
@@ -30,7 +30,7 @@ dev_feature_path:
   - "../espnet_data/alfred/dev/hyps_score.json"
   - "../espnet_data/alfred/dev/hyps_cer.json"
 
-output_path: "result/retrain_MD_MWED"
+output_path: "result/MD_MWED/8best"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
@@ -39,7 +39,7 @@ batch_size: 3
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
 max_utt: 999999999
-n_best: 10
+n_best: 6
 
 dataloader:
   shuffle: False
