@@ -21,12 +21,23 @@ class CorrectBart(nn.Module):
         return bart_output.loss
 
     def generate(self, input_ids, attention_mask):
+        bart_output = self.bart(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            return_dict=True
+        )
+        print(bart_output.logits.size())
+
+
         bart_output = self.bart.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
             max_length=50, 
             return_dict=True
         )
+        print(bart_output)
+
+
         predictions = []
         for pred in bart_output.tolist():
             pred = self.tokenizer.convert_ids_to_tokens(pred)
@@ -89,8 +100,7 @@ class NBestAlignCorrectBart(nn.Module):
             attention_mask=attention_mask,
             max_length=50, 
             return_dict=True
-        )
-
+        ) 
         predictions = []
         for pred in bart_output.tolist():
             pred = self.tokenizer.convert_ids_to_tokens(pred)

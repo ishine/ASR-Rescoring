@@ -5,23 +5,23 @@ method: "top_one_anchor"
 seed: 10
 
 lr: 0.00001
-epoch: 10
+epoch: 2
 device: "cpu"
 
 train_feature:
-  - ref_token_ids
-  - hyps_token_ids
+  - ref_text
+  - hyp_text
 train_feature_path: 
   - "../espnet_data/alfred/test/ref_text.json"
   - "../espnet_data/alfred/test/hyps_text.json"
 dev_feature:
-  - ref_token_ids
-  - hyps_token_ids
+  - ref_text
+  - hyp_text
 dev_feature_path: 
   - "../espnet_data/alfred/test/ref_text.json"
   - "../espnet_data/alfred/test/hyps_text.json"
 
-output_path: "result/ref_anchor"
+output_path: "result/top_one_anchor"
 
 # the unit of batch size is utterence
 # if batch_size = m, means m*n-best hypotheses in one batch
@@ -29,8 +29,8 @@ batch_size: 2
 
 # if you don't want to process too much data (like for debugging)
 # you can set this value to a small number.
-max_utt: 2
-n_best: 2
+max_utt: 10
+n_best: 3
 
 dataloader:
   shuffle: False
